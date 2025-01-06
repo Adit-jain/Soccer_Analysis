@@ -1,0 +1,14 @@
+dataset_name = "SoccerNet"
+epochs = 10
+img_size = 512
+batch = 16
+model_name = 'yolov11'
+run = 'Third'
+start_model_name = 'yolov11'
+start_model_run = 'Second'
+resume = False
+save_period = -1
+single_cls = True
+freeze = False
+lr0 = 0.01
+lrf = 0.01
