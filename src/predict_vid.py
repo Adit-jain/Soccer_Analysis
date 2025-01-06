@@ -4,7 +4,7 @@ import os
 import matplotlib.pyplot as plt
 
 vid_path = r"D:\Datasets\SoccerNet\Data\england_epl\2014-2015\2015-02-21 - 18-00 Chelsea 1 - 1 Burnley\1_224p.mkv"
-model = YOLO(r"../Models/Pretrained/yolo11l.pt")
+model = YOLO(r"Models/Trained/yolov11/Third/weights/best.pt")
 
 cap = cv2.VideoCapture(vid_path)
 while cap.isOpened():
