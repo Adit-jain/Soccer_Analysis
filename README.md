@@ -1,2 +1,2 @@
-# SoccerNet_Tracking
-Tracking and Sport analysis for the task of Tracking in SoccerNet dataset
+# Soccer Analysis
+An all rounder sport analysis project which includes tracking, Game field reconstruction, team identification, player speed tracking, etc.
