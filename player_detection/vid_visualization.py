@@ -1,15 +1,16 @@
 import cv2
 from ultralytics import YOLO
-import os
-import matplotlib.pyplot as plt
+from constants import test_video, model_path
 
-vid_path = r"D:\Datasets\SoccerNet\Data\england_epl\2014-2015\2015-02-21 - 18-00 Chelsea 1 - 1 Burnley\1_224p.mkv"
-model = YOLO(r"Models/Trained/yolov11/Third/weights/best.pt")
+# Load the YOLO model
+model = YOLO(model_path)
 
-cap = cv2.VideoCapture(vid_path)
+# Open the video file
+cap = cv2.VideoCapture(test_video)
+
+# Loop through the video frames
 while cap.isOpened():
     success, frame = cap.read()
-
     if success:
         results = model(frame)
         annotated_frame = results[0].plot()
@@ -19,6 +20,7 @@ while cap.isOpened():
     else:
         break
 
+# Release the video capture object and close the display window
 cap.release()
 cv2.destroyAllWindows()
 

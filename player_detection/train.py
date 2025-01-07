@@ -1,6 +1,6 @@
 from ultralytics import YOLO
 from args import (dataset_name, epochs, img_size, model_name, run, start_model_name, start_model_run,
-                  resume, save_period, single_cls, freeze, lr0, lrf)
+                  resume, save_period, single_cls, freeze, lr0, lrf, dropout)
 
 
 if __name__ == "__main__":
@@ -33,4 +33,5 @@ if __name__ == "__main__":
                           freeze=freeze,
                           lr0=lr0,
                           lrf=lrf,
+                          dropout=dropout,
                           plots=True)

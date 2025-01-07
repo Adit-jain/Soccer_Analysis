@@ -12,3 +12,4 @@ single_cls = True
 freeze = False
 lr0 = 0.01
 lrf = 0.01
+dropout = 0.3
