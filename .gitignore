@@ -165,6 +165,6 @@ cython_debug/
 Data_utils/SoccerNet/yaml_path.txt
 Models/Pretrained/yolo11l.pt
 Models/Pretrained/yolo11n.pt
-Models/Trained/yolov11/
-Models/Trained/yolov8/
+Models/Trained/*
 player_detection/yolo11n.pt
+*.ipynb

@@ -3,6 +3,7 @@
 from ultralytics import YOLO
 from train_args import (dataset_name, epochs, img_size, model_name, run, start_model_name, start_model_run,
                   resume, save_period, single_cls, freeze, lr0, lrf, dropout)
+import os
 
 
 if __name__ == "__main__":
@@ -16,7 +17,7 @@ if __name__ == "__main__":
     model = YOLO(model_path)
 
     # Get YAML path
-    yaml_path_txt = fr"../Data_utils/{dataset_name}/yaml_path.txt"
+    yaml_path_txt = os.path.abspath(os.path.join(os.path.dirname(__file__), fr"../Data_utils/{dataset_name}/yaml_path.txt"))
     with open(yaml_path_txt, 'r') as f:
         yaml_path = f.readline()
     print(f"YAML path : {yaml_path}")
