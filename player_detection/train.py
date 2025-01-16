@@ -1,10 +1,12 @@
+"""File to Fine-Tune a YOLO model"""
+
 from ultralytics import YOLO
-from args import (dataset_name, epochs, img_size, model_name, run, start_model_name, start_model_run,
+from train_args import (dataset_name, epochs, img_size, model_name, run, start_model_name, start_model_run,
                   resume, save_period, single_cls, freeze, lr0, lrf, dropout)
 
 
 if __name__ == "__main__":
-    
+
     # Train on Original YOLO model or new model
     if 'original_' in start_model_name:
         model_path = fr"../Models/Pretrained/{start_model_name.split('original_')[-1]}.pt"
