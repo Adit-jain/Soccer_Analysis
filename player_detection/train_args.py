@@ -1,12 +1,12 @@
 dataset_name = "SoccerNet"
 epochs = 10
 img_size = 1280
-batch = 16
+batch_size =8
 model_name = 'yolov11_1280'
-run = 'First'
-start_model_name = 'original_yolo11l'
-start_model_run = 'None'
-resume = False
+run = 'First.2'
+start_model_name = 'yolov11_1280'
+start_model_run = 'First'
+resume = True
 save_period = 1
 single_cls = False
 freeze = False

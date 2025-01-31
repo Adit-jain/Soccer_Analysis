@@ -163,8 +163,7 @@ cython_debug/
 
 # Extra files
 Data_utils/SoccerNet/yaml_path.txt
-Models/Pretrained/yolo11l.pt
-Models/Pretrained/yolo11n.pt
+Models/Pretrained/yolo*
 Models/Trained/*
-player_detection/yolo11n.pt
+*yolo11n.pt
 *.ipynb
