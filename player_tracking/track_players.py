@@ -1,7 +1,7 @@
 try:
-    from tracking_constants import model_path, test_video, test_video_output, PROJECT_PATH
+    from tracking_constants import model_path, test_video, PROJECT_PATH
 except ImportError:
-    from player_tracking.tracking_constants import model_path, test_video, test_video_output, PROJECT_PATH
+    from player_tracking.tracking_constants import model_path, test_video, PROJECT_PATH
 
 import sys
 if PROJECT_PATH not in sys.path:
@@ -11,50 +11,22 @@ import numpy as np
 import supervision as sv
 from ultralytics import YOLO
 from player_detection import load_detection_model, detect_players_in_frames
-from player_tracking.player_assignment import init_assignment_models, assign_players
+from player_tracking.player_assignment import init_assignment_models, get_player_crops, create_batches, assign_batch
 import cv2
 import time
-
-detection_model = None
-tracker = None
-ellipse_annotator = None
-traingle_annotator = None
-label_annotator = None
-assignment_model = None
-processor = None
-reducer = None
-cluster_model = None
+from tqdm import tqdm
 
 
-def annotation_callback(frame: np.ndarray, index: int) -> np.ndarray:
+def get_detections(detection_model, frame: np.ndarray) -> np.ndarray:
     """
-    A callback function to annotate the frames ellipses, labels, and team assignments.
+    Get the detections from the detection model.
     """
-
-    global detection_model, tracker, ellipse_annotator, traingle_annotator, label_annotator, assignment_model, processor, reducer, cluster_model
-
     results = detect_players_in_frames(detection_model, frame)[0]
     detections = sv.Detections.from_ultralytics(results)
-    if len(detections) == 0:
-        return frame
-    
     player_detections = detections[detections.class_id == 0]
     ball_detections = detections[detections.class_id == 1]
-    
-    assignment_time = time.time()
-    player_assignments = assign_players(frame, player_detections, assignment_model, processor, reducer, cluster_model)
-    assignment_time = time.time() - assignment_time
-    print(f"Assignment Time: {assignment_time:.2f}s")
 
-    player_detections = tracker.update_with_detections(player_detections)
-    player_detections.class_id = player_assignments
-    player_labels = [f'#{tracker_id}' for tracker_id in player_detections.tracker_id]
-
-    player_annotated_frame = ellipse_annotator.annotate(frame.copy(), player_detections)
-    ball_annotated_frame = traingle_annotator.annotate(player_annotated_frame, ball_detections)
-    labeled_frame = label_annotator.annotate(ball_annotated_frame, detections=player_detections, labels=player_labels)
-
-    return labeled_frame
+    return player_detections, ball_detections
 
 
 def init_tracking_models():
@@ -69,37 +41,67 @@ def init_tracking_models():
     return tracker, ellipse_annotator, traingle_annotator, label_annotator
 
 
-def track_players_video(video_path, output_path, model_path):
+def train_umap_kmeans(VIDEO_PATH, detection_model, siglip_model, siglip_processor, reducer, cluster_model):
     """
-    This function tracks players in a video and saves the video with the tracking annotations
+    Train the UMAP and KMeans models.
     """
-    global detection_model, tracker, ellipse_annotator, traingle_annotator, label_annotator, assignment_model, processor, reducer, cluster_model
+    # Get the video frames
+    frame_generator = sv.get_video_frames_generator(VIDEO_PATH, stride=24, end=60*24)
+    
+    # Get player crops
+    crops = []
+    for frame in tqdm(frame_generator, desc='collecting_crops'):
+        player_detections, _ = get_detections(detection_model, frame)
+        cropped_images = get_player_crops(frame, player_detections)
+        crops += cropped_images
 
-    # Load the Model
-    print("Initializing the model...")
-    detection_model = load_detection_model(model_path)
+    # Train and get assignments
+    crop_batches = create_batches(crops, 24)
+    clustered_embeddings, reducer, cluster_model = assign_batch(crop_batches, siglip_model, siglip_processor, reducer, cluster_model, train=True)
+    return clustered_embeddings, reducer, cluster_model
 
-    # Initialize the annotators
-    print("Initializing the annotators...")
-    tracker, ellipse_annotator, traingle_annotator, label_annotator = init_tracking_models()
 
-    # Initialize the Player Assignment Models
-    print("Initializing the player assignment models...")
-    assignment_model, processor, reducer, cluster_model = init_assignment_models()
+def annotation_callback(frame: np.ndarray, detection_model, siglip_model, siglip_processor, reducer, cluster_model, 
+                        tracker, ellipse_annotator, traingle_annotator, label_annotator) -> np.ndarray:
+    """
+    A callback function to annotate the frames ellipses, labels, and team assignments.
+    """
 
-    # Process Video
-    print("Processing the video...")
-    sv.process_video(source_path=video_path, target_path=output_path, callback=annotation_callback)
+    # Get Detections
+    player_detections, ball_detections = get_detections(detection_model, frame)
+    if len(player_detections) == 0:
+        return frame
+    
+    # Get player crops
+    crops = get_player_crops(frame, player_detections)
+    
+    # Get assignments
+    assignment_time = time.time()
+    clustered_embeddings, reducer, cluster_model = assign_batch([crops], siglip_model, siglip_processor, reducer, cluster_model, train=False)
+    assignment_time = time.time() - assignment_time
+    print(f"Assignment Time: {assignment_time:.2f}s")
+
+    # Use the assignments on the frame
+    player_detections = tracker.update_with_detections(player_detections)
+    player_detections.class_id = clustered_embeddings
+
+    # Get the labels
+    player_labels = [f'#{tracker_id}' for tracker_id in player_detections.tracker_id]
+
+    # Annotate the frame
+    player_annotated_frame = ellipse_annotator.annotate(frame.copy(), player_detections)
+    ball_annotated_frame = traingle_annotator.annotate(player_annotated_frame, ball_detections)
+    labeled_frame = label_annotator.annotate(ball_annotated_frame, detections=player_detections, labels=player_labels)
+
+    return labeled_frame
 
 
 def track_players_realtime(video_path, model_path):
     """
     This function detects players in a video in real-time
     """
-    global detection_model, tracker, ellipse_annotator, traingle_annotator, label_annotator, assignment_model, processor, reducer, cluster_model
-
-    model_init_time = time.time()
     # Load the Model
+    model_init_time = time.time()
     print("Initializing the model...")
     detection_model = load_detection_model(model_path)
 
@@ -109,10 +111,16 @@ def track_players_realtime(video_path, model_path):
 
     # Initialize the Player Assignment Models
     print("Initializing the player assignment models...")
-    assignment_model, processor, reducer, cluster_model = init_assignment_models()
-
+    siglip_model, siglip_processor, reducer, cluster_model = init_assignment_models()
     model_init_time = time.time() - model_init_time
     print(f"Model Initialization Time: {model_init_time:.2f}s")
+
+    # Train the UMAP and KMeans models
+    print("Training the UMAP and KMeans models...")
+    training_kmeans_time = time.time()
+    _, reducer, cluster_model = train_umap_kmeans(video_path, detection_model, siglip_model, siglip_processor, reducer, cluster_model)
+    training_kmeans_time = time.time() - training_kmeans_time
+    print(f"Training KMeans Time: {training_kmeans_time:.2f}s")
 
     # Open the video file
     cap = cv2.VideoCapture(video_path)
@@ -121,10 +129,14 @@ def track_players_realtime(video_path, model_path):
     while cap.isOpened():
         success, frame = cap.read()
         if success:
+
+            # Annotate the frame
             annotation_time = time.time()
-            result = annotation_callback(frame, 0)
+            result = annotation_callback(frame, detection_model, siglip_model, siglip_processor, reducer, cluster_model, tracker, ellipse_annotator, traingle_annotator, label_annotator)
             annotation_time = time.time() - annotation_time
             print(f"Annotation Time: {annotation_time:.2f}s")
+
+            # Display the frame
             cv2.imshow("YOLO Inference", result)
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
@@ -137,5 +149,4 @@ def track_players_realtime(video_path, model_path):
 
 
 if __name__ == "__main__":
-    # track_players_video(test_video, test_video_output, model_path)
     track_players_realtime(test_video, model_path)
