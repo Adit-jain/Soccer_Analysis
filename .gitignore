@@ -163,7 +163,9 @@ cython_debug/
 
 # Extra files
 Data_utils/SoccerNet/yaml_path.txt
+Data_utils/SoccerAnalysis_final/download_data.py
 Models/Pretrained/yolo*
 Models/Trained/*
 *yolo11n.pt
 *.ipynb
+

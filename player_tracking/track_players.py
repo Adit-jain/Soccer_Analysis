@@ -34,6 +34,8 @@ def init_tracking_models():
     Initialize the tracking models for the player tracking system
     """
     tracker = sv.ByteTrack()
+    tracker.match_thresh = 0.5
+    tracker.track_buffer = 120
     ellipse_annotator = sv.EllipseAnnotator()
     traingle_annotator = sv.TriangleAnnotator()
     label_annotator = sv.LabelAnnotator()
