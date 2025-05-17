@@ -1,23 +1,21 @@
+import sys
+from pathlib import Path
+PROJECT_DIR = Path(__file__).resolve().parent.parent
+sys.path.append(str(PROJECT_DIR))
+
 from ultralytics import YOLO
-from train_args import dataset_name, model_name, run, start_model_name, start_model_run
+from player_detection.train_args import dataset_yaml_path, model_path, model_name, run, start_model_name, start_model_run
 
 if __name__ == "__main__":
 
-    # Train on Original YOLO model or new model
-    if 'original_' in start_model_name:
-        model_path = fr"../Models/Pretrained/{start_model_name.split('original_')[-1]}.pt"
-    else:
-        model_path = fr"../Models/Trained/{start_model_name}/{start_model_run}/weights/best.pt"
+    # Model path
     print(f"Model : {model_path}")
     model = YOLO(model_path)
 
-    # Get YAML path
-    yaml_path_txt = fr"../Data_utils/{dataset_name}/yaml_path.txt"
-    with open(yaml_path_txt, 'r') as f:
-        yaml_path = f.readline()
-    print(f"YAML path : {yaml_path}")
+    # YAML path
+    print(f"YAML path : {dataset_yaml_path}")
 
     # Validation
-    metrics = model.val(data=fr"{yaml_path}",
-                        project=fr'../Models/Trained/{model_name}',
-                        name=f'{run}_val')
+    metrics = model.val(data = fr"{dataset_yaml_path}",
+                        project = PROJECT_DIR / fr'Models/Trained/{model_name}',
+                        name = f'{run}_val')

@@ -1,3 +1,9 @@
+import sys
+from pathlib import Path
+PROJECT_DIR = Path(__file__).resolve().parent.parent
+sys.path.append(str(PROJECT_DIR))
+
+from player_detection import get_detections
 import supervision as sv
 from transformers import AutoProcessor, SiglipVisionModel
 import torch
@@ -88,5 +94,41 @@ def assign_batch(crop_batches, siglip_model, siglip_processor, reducer, cluster_
     clustered_embeddings, cluster_model = cluster_embeddings(reduced_embeddings, cluster_model, train=train)
     return clustered_embeddings, reducer, cluster_model
 
+
+def train_umap_kmeans(VIDEO_PATH, detection_model, siglip_model, siglip_processor, reducer, cluster_model, crops=None):
+    """
+    Train the UMAP and KMeans models.
+    """
+
+    if crops is None:
+        # Get the video frames
+        frame_generator = sv.get_video_frames_generator(VIDEO_PATH, stride=24, end=60*24)
+        
+        # Get player crops
+        crops = []
+        for frame in tqdm(frame_generator, desc='collecting_crops'):
+            player_detections, _, _ = get_detections(detection_model, frame)
+            cropped_images = get_player_crops(frame, player_detections)
+            crops += cropped_images
+
+    # Train and get assignments
+    crop_batches = create_batches(crops, 24)
+    clustered_embeddings, reducer, cluster_model = assign_batch(crop_batches, siglip_model, siglip_processor, reducer, cluster_model, train=True)
+    return clustered_embeddings, reducer, cluster_model
+
+
+def get_cluster_labels(frame, player_detections, siglip_model, siglip_processor, reducer, cluster_model, crops=None):
+    """
+    Get the cluster labels for the players.
+    """
+
+    if crops is None:
+        # Get player crops
+        crops = get_player_crops(frame, player_detections)
+    
+    # Get assignments
+    clustered_embeddings, _, _ = assign_batch([crops], siglip_model, siglip_processor, reducer, cluster_model, train=False)
+
+    return clustered_embeddings
 
     

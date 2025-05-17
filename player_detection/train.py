@@ -1,37 +1,29 @@
 """File to Fine-Tune a YOLO model"""
 
+import sys
+from pathlib import Path
+PROJECT_DIR = Path(__file__).resolve().parent.parent
+sys.path.append(str(PROJECT_DIR))
+
 from ultralytics import YOLO
-from train_args import (dataset_name, epochs, img_size, batch_size, model_name, run, start_model_name, start_model_run,
-                  resume, save_period, single_cls, freeze, lr0, lrf, dropout)
+from player_detection.train_args import (dataset_yaml_path, model_path, epochs, img_size, batch_size, model_name, run, resume, save_period, single_cls, freeze, lr0, lrf, dropout)
 import os
 
-
 if __name__ == "__main__":
-
-    # Get current directory path
-    cur_dir_path = os.path.dirname(__file__)
-
-    # Train on Original YOLO model or new model
-    if 'original_' in start_model_name:
-        model_path = os.path.abspath(os.path.join(cur_dir_path, fr"../Models/Pretrained/{start_model_name.split('original_')[-1]}.pt"))
-    else:
-        model_path = os.path.abspath(os.path.join(cur_dir_path, fr"../Models/Trained/{start_model_name}/{start_model_run}/weights/best.pt"))
+    # Model path
     print(f"Model : {model_path}")
     model = YOLO(model_path)
 
-    # Get YAML path
-    yaml_path_txt = os.path.abspath(os.path.join(cur_dir_path, fr"../Data_utils/{dataset_name}/yaml_path.txt"))
-    with open(yaml_path_txt, 'r') as f:
-        yaml_path = f.readline()
-    print(f"YAML path : {yaml_path}")
+    # YAML path
+    print(f"YAML path : {dataset_yaml_path}")
 
     # Training
-    results = model.train(data=fr"{yaml_path}",
+    results = model.train(data=fr"{dataset_yaml_path}",
                           epochs=epochs,
                           imgsz=img_size,
                           batch=batch_size,
-                          project=os.path.abspath(os.path.join(cur_dir_path, fr'../Models/Trained/{model_name}')),
-                          name=f'{run}',
+                          project= PROJECT_DIR / fr'Models/Trained/{model_name}',
+                          name=run,
                           seed=44,
                           resume=resume,
                           save=True,

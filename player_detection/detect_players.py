@@ -1,17 +1,16 @@
-try:
-    from detection_constants import model_path, PROJECT_PATH, test_video, test_video_output, test_image_dir
-except ImportError:
-    from player_detection.detection_constants import model_path, PROJECT_PATH, test_video, test_video_output, test_image_dir
-
 import sys
-if PROJECT_PATH not in sys.path:
-    sys.path.append(PROJECT_PATH)
+from pathlib import Path
+PROJECT_DIR = Path(__file__).resolve().parent.parent
+sys.path.append(str(PROJECT_DIR))
 
+from player_detection.detection_constants import model_path, test_video, test_video_output, test_image_dir
 from utils import read_video, write_video
 from ultralytics import YOLO
 import cv2
 import random
 import os
+import numpy as np
+import supervision as sv
 
 ##################################################### Utils ##############################################################
 def load_detection_model(model_path):
@@ -20,13 +19,23 @@ def load_detection_model(model_path):
     model = YOLO(model_path)
     return model
 
-
 def detect_players_in_frames(model, frames):
     """This function detects players in a frame"""
 
     result = model(frames)
     return result
 
+def get_detections(detection_model, frame: np.ndarray) -> np.ndarray:
+    """
+    Get the detections from the detection model.
+    """
+    results = detect_players_in_frames(detection_model, frame)[0]
+    detections = sv.Detections.from_ultralytics(results)
+    player_detections = detections[detections.class_id == 0]
+    ball_detections = detections[detections.class_id == 1]
+    referee_detections = detections[detections.class_id == 2]
+
+    return player_detections, ball_detections, referee_detections
 
 def draw_bounding_boxes(image, boxes, classes, confs, class_names):
     """This function draws the bounding boxes on the image"""
