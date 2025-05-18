@@ -25,16 +25,33 @@ def detect_players_in_frames(model, frames):
     result = model(frames)
     return result
 
-def get_detections(detection_model, frame: np.ndarray) -> np.ndarray:
+def get_detections(detection_model, frame: np.ndarray, slice=False) -> np.ndarray:
     """
     Get the detections from the detection model.
     """
-    results = detect_players_in_frames(detection_model, frame)[0]
-    detections = sv.Detections.from_ultralytics(results)
+
+    # Define the inference callback
+    def inference_callback(frame: np.ndarray) -> sv.Detections:
+        """
+        A callback function to convert detections to supervision format.
+        """
+        result = detect_players_in_frames(detection_model, frame)[0]
+        return sv.Detections.from_ultralytics(result)
+
+    # Use the slicer to get the detections if slice mode
+    if slice:
+        slicer = sv.InferenceSlicer(callback=inference_callback)
+        detections = slicer(frame)
+    # Process the frame normally if not slice mode
+    else:
+        detections = inference_callback(frame)
+
+    # Get the player, ball, and referee detections
     player_detections = detections[detections.class_id == 0]
     ball_detections = detections[detections.class_id == 1]
     referee_detections = detections[detections.class_id == 2]
 
+    # Return the separate detections
     return player_detections, ball_detections, referee_detections
 
 def draw_bounding_boxes(image, boxes, classes, confs, class_names):
