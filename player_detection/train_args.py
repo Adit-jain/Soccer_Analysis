@@ -3,10 +3,10 @@ from pathlib import Path
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 sys.path.append(str(PROJECT_DIR))
 
-dataset_yaml_path = r"D:\Datasets\SoccerAnalysis_Final\V1\data.yaml"
-epochs = 30
+dataset_yaml_path = r"F:\Datasets\SoccerAnalysis_Final\V1\data.yaml"
+epochs = 200
 img_size = 1280
-batch_size = 8
+batch_size = 32
 model_name = 'yolov11_sahi_1280'
 run = 'First'
 start_model_name = 'original_yolo11n'

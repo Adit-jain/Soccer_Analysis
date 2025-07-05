@@ -12,7 +12,7 @@ def read_video(vid_path, frame_count=300):
         if success:
             frames.append(frame)
         else:
-            pass
+            break
 
         counter += 1
         if counter == frame_count:

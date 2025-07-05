@@ -102,7 +102,7 @@ def train_umap_kmeans(VIDEO_PATH, detection_model, siglip_model, siglip_processo
 
     if crops is None:
         # Get the video frames
-        frame_generator = sv.get_video_frames_generator(VIDEO_PATH, stride=24, end=60*24)
+        frame_generator = sv.get_video_frames_generator(VIDEO_PATH, stride=12, end=120*24)
         
         # Get player crops
         crops = []
