@@ -20,7 +20,7 @@ def visualize_coco(image_dir, annotation_file):
     img_ids = coco.getImgIds()
     selected_ids = img_ids
     
-    for img_id in selected_ids:
+    for img_id in random.sample(selected_ids, 10):
         img_info = coco.loadImgs(img_id)[0]
         img_path = os.path.join(image_dir, img_info['file_name'])
         
@@ -51,5 +51,5 @@ def visualize_coco(image_dir, annotation_file):
         plt.show()
 
 # Example usage
-visualize_coco(r"D:\Datasets\SoccerAnalysis_Final\V1\train", 
-               r"D:\Datasets\SoccerAnalysis_Final\V1\train\_annotations.coco.json")
+visualize_coco(r"F:\Datasets\SoccerAnalysis_Final\V1\images\train", 
+               r"F:\Datasets\SoccerAnalysis_Final\V1\coco_train_annotations\_annotations.coco.json")

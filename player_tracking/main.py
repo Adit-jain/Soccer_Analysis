@@ -222,7 +222,7 @@ def track_players(video_path, model_path):
 
     # Read the video
     print("Reading the video...")
-    frames = read_video(video_path)  # Read all frames from the video
+    frames = read_video(video_path, frame_count=-1)  # Read all frames from the video
 
     # Get tracks for each frame
     print("Getting tracks for each frame...")

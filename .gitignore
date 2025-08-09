@@ -168,4 +168,7 @@ Models/Pretrained/yolo*
 Models/Trained/*
 *yolo11n.pt
 *.ipynb
+*.md
+*.png
+
 
