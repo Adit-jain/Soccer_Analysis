@@ -187,64 +187,64 @@ def process_unified_soccernet_dataset() -> None:
             image_path = images_path / json_file.replace('.json', '.jpg')
             base_name = json_file.replace('.json', '')
                 
-                if not image_path.exists():
-                    print(f"  Warning: Image not found: {image_path}")
+            if not image_path.exists():
+                print(f"  Warning: Image not found: {image_path}")
+                continue
+            
+            try:
+                # 1. Calculate keypoints from lines
+                calculator.load_soccernet_data(str(json_path))
+                keypoints, lines = calculator.calculate_field_keypoints()
+                
+                # 2. Detect pitch object
+                pitch_result = pitch_detector.detect_pitch_from_image(str(image_path))
+                
+                if not pitch_result:
+                    print(f"  Warning: Failed to detect pitch in: {image_path.name}")
                     continue
-                
-                try:
-                    # 1. Calculate keypoints from lines
-                    calculator.load_soccernet_data(str(json_path))
-                    keypoints, lines = calculator.calculate_field_keypoints()
-                    
-                    # 2. Detect pitch object
-                    pitch_result = pitch_detector.detect_pitch_from_image(str(image_path))
-                    
-                    if not pitch_result:
-                        print(f"  Warning: Failed to detect pitch in: {image_path.name}")
-                        continue
-                except Exception as e:
-                    print(f"  Error processing {json_file}: {e}")
-                    continue
-                
-                pitch_data = pitch_result['pitch_detection']
-                image_shape = (pitch_result['image_shape']['height'], 
-                              pitch_result['image_shape']['width'])
-                
-                # 3. Create unified JSON annotation
-                unified_annotation = {
-                    'image_info': {
-                        'file_name': image_path.name,
-                        'path': str(image_path),
-                        'width': image_shape[1],
-                        'height': image_shape[0]
-                    },
-                    'pitch_object': pitch_data,
-                    'keypoints': keypoints,
-                    'original_lines': lines,
-                    'dataset_split': dataset_type,
-                    'total_keypoints': len(keypoints),
-                    'annotation_format': 'SoccerNet_unified_v1'
-                }
-                
-                # Save unified JSON
-                json_output_path = json_dir / dataset_type / f"{base_name}.json"
-                with open(json_output_path, 'w', encoding='utf-8') as f:
-                    json.dump(unified_annotation, f, indent=2)
-                
-                # 4. Create Ultralytics YOLO format label
-                yolo_annotation = create_ultralytics_annotation(
-                    pitch_data, keypoints, image_shape
-                )
-                yolo_output_path = yolo_labels_dir / dataset_type / f"{base_name}.txt"
-                with open(yolo_output_path, 'w', encoding='utf-8') as f:
-                    f.write(yolo_annotation + '\n')
-                
-                # 5. Create unified visualization
-                vis_output_path = images_dir / dataset_type / f"{base_name}_annotated.jpg"
-                create_unified_visualization(
-                    str(image_path), pitch_data, keypoints, 
-                    lines, str(vis_output_path)
-                )
+            except Exception as e:
+                print(f"  Error processing {json_file}: {e}")
+                continue
+            
+            pitch_data = pitch_result['pitch_detection']
+            image_shape = (pitch_result['image_shape']['height'], 
+                            pitch_result['image_shape']['width'])
+            
+            # 3. Create unified JSON annotation
+            unified_annotation = {
+                'image_info': {
+                    'file_name': image_path.name,
+                    'path': str(image_path),
+                    'width': image_shape[1],
+                    'height': image_shape[0]
+                },
+                'pitch_object': pitch_data,
+                'keypoints': keypoints,
+                'original_lines': lines,
+                'dataset_split': dataset_type,
+                'total_keypoints': len(keypoints),
+                'annotation_format': 'SoccerNet_unified_v1'
+            }
+            
+            # Save unified JSON
+            json_output_path = json_dir / dataset_type / f"{base_name}.json"
+            with open(json_output_path, 'w', encoding='utf-8') as f:
+                json.dump(unified_annotation, f, indent=2)
+            
+            # 4. Create Ultralytics YOLO format label
+            yolo_annotation = create_ultralytics_annotation(
+                pitch_data, keypoints, image_shape
+            )
+            yolo_output_path = yolo_labels_dir / dataset_type / f"{base_name}.txt"
+            with open(yolo_output_path, 'w', encoding='utf-8') as f:
+                f.write(yolo_annotation + '\n')
+            
+            # 5. Create unified visualization
+            vis_output_path = images_dir / dataset_type / f"{base_name}_annotated.jpg"
+            create_unified_visualization(
+                str(image_path), pitch_data, keypoints, 
+                lines, str(vis_output_path)
+            )
                 
     print(f"\n🎉 Processing complete! Output directories:")
     print(f"  📄 JSON annotations: {json_dir}")
