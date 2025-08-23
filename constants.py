@@ -35,7 +35,7 @@ sys.path.append(str(PROJECT_DIR))
 
 # Path to the trained YOLO model
 # Download from: https://huggingface.co/Adit-jain/soccana
-model_path = r"Models\Trained\yolov11_sahi_1280\First\weights\best.pt"
+model_path = r"Models\Trained\yolov11_sahi_1280\Model\weights\best.pt"
 model_path = PROJECT_DIR / model_path
 
 # Alternative model paths (uncomment if using different models)
@@ -130,17 +130,6 @@ def validate_config():
     if not model_path.exists():
         issues.append(f"Model not found at: {model_path}")
         issues.append("Download from: https://huggingface.co/Adit-jain/soccana")
-    
-    # Check if video paths are still default (likely need updating)
-    if "F:\\Datasets\\SoccerNet" in str(test_video):
-        issues.append("test_video still uses default path - please update with your video file")
-    
-    if "F:\\Datasets\\SoccerNet" in str(test_video_output):
-        issues.append("test_video_output still uses default path - please update")
-    
-    # Check video file exists (if not default)
-    if "F:\\Datasets\\SoccerNet" not in str(test_video) and not Path(test_video).exists():
-        issues.append(f"Input video not found: {test_video}")
     
     return issues
 

@@ -6,7 +6,7 @@ using YOLO models. Pipeline functions have been moved to detection_pipeline.py.
 
 import sys
 from pathlib import Path
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 sys.path.append(str(PROJECT_DIR))
