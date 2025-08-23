@@ -411,33 +411,6 @@ python Data_utils/SoccerNet_Keypoints/get_pitch_object.py
 python Data_utils/SoccerNet_Detections/data_preprocessing.py
 ```
 
-## 🤝 Contributing
-
-1. Follow the modular architecture principles
-2. Ensure modules remain independent
-3. Use pipelines for coordination
-4. Add tests for new functionality
-5. Update documentation
-
-## 📄 License
-
-[Add your license information here]
-
-## 🙏 Acknowledgments
-
-- [Ultralytics](https://ultralytics.com/) for YOLO models
-- [Supervision](https://supervision.roboflow.com/) for computer vision utilities
-- [SigLIP](https://huggingface.co/google/siglip-base-patch16-224) for visual embeddings
-- [SoccerNet](https://www.soccer-net.org/) for dataset and benchmarks
-
-## 📞 Support
-
-For issues and questions:
-1. Check troubleshooting section
-2. Review CLAUDE.md for development guidance
-3. Create an issue with detailed error logs
-4. Include system information and configuration
-
 ---
 
 **Model URL**: https://huggingface.co/Adit-jain/soccana
