@@ -89,6 +89,115 @@ class LineIntersectionCalculator:
         
         return x_intersect, y_intersect
     
+    def point_to_line_distance(self, point: Dict[str, float], line: List[Dict]) -> float:
+        """
+        Calculate the perpendicular distance from a point to a line.
+        
+        Args:
+            point: Dictionary with 'x', 'y' coordinates
+            line: List of 2 dictionaries with 'x', 'y' coordinates defining the line
+            
+        Returns:
+            Distance from point to line
+        """
+        if len(line) < 2:
+            return float('inf')
+        
+        x0, y0 = point['x'], point['y']
+        x1, y1 = line[0]['x'], line[0]['y']
+        x2, y2 = line[1]['x'], line[1]['y']
+        
+        # Distance from point to line formula: |ax + by + c| / sqrt(a² + b²)
+        # Line equation: (y2-y1)x - (x2-x1)y + (x2-x1)y1 - (y2-y1)x1 = 0
+        a = y2 - y1
+        b = x1 - x2
+        c = (x2 - x1) * y1 - (y2 - y1) * x1
+        
+        if a == 0 and b == 0:
+            # Line is actually a point, return distance between points
+            return math.sqrt((x0 - x1) ** 2 + (y0 - y1) ** 2)
+            
+        distance = abs(a * x0 + b * y0 + c) / math.sqrt(a * a + b * b)
+        return distance
+    
+    def circle_line_intersection(self, circle_points: List[Dict], line: List[Dict]) -> List[Tuple[float, float]]:
+        """
+        Calculate intersection points between a circle (defined by points) and a line.
+        
+        Args:
+            circle_points: List of points defining the circle
+            line: List of 2 dictionaries with 'x', 'y' coordinates defining the line
+            
+        Returns:
+            List of intersection points as (x, y) tuples
+        """
+        if len(line) < 2 or len(circle_points) < 3:
+            return []
+        
+        # Estimate circle center and radius from points
+        xs = [p['x'] for p in circle_points]
+        ys = [p['y'] for p in circle_points]
+        center_x = sum(xs) / len(xs)
+        center_y = sum(ys) / len(ys)
+        
+        # Estimate radius as average distance from center
+        distances = [math.sqrt((p['x'] - center_x)**2 + (p['y'] - center_y)**2) for p in circle_points]
+        radius = sum(distances) / len(distances)
+        
+        # Line parameters
+        x1, y1 = line[0]['x'], line[0]['y']
+        x2, y2 = line[1]['x'], line[1]['y']
+        
+        # Convert line to standard form: ax + by + c = 0
+        if abs(x2 - x1) < 1e-10:  # Vertical line
+            # x = x1 form, substitute into circle equation
+            a = 1
+            b = 0
+            c = -x1
+        else:
+            # Convert to ax + by + c = 0 form
+            slope = (y2 - y1) / (x2 - x1)
+            a = slope
+            b = -1
+            c = y1 - slope * x1
+        
+        # Solve circle-line intersection
+        # Circle: (x - h)² + (y - k)² = r²
+        # Line: ax + by + c = 0 -> y = (-ax - c) / b (if b ≠ 0)
+        
+        intersections = []
+        
+        if abs(b) > 1e-10:  # Non-horizontal line
+            # Substitute y = (-ax - c) / b into circle equation
+            # (x - h)² + ((-ax - c)/b - k)² = r²
+            A = 1 + (a/b)**2
+            B = 2 * ((a*c)/(b**2) + (a*center_y)/b - center_x)
+            C = (c/b + center_y)**2 + center_x**2 - radius**2
+            
+            discriminant = B**2 - 4*A*C
+            if discriminant >= 0:
+                sqrt_discriminant = math.sqrt(discriminant)
+                x_int1 = (-B + sqrt_discriminant) / (2*A)
+                x_int2 = (-B - sqrt_discriminant) / (2*A)
+                
+                y_int1 = (-a*x_int1 - c) / b
+                y_int2 = (-a*x_int2 - c) / b
+                
+                intersections.append((x_int1, y_int1))
+                if discriminant > 0:  # Two distinct intersections
+                    intersections.append((x_int2, y_int2))
+        else:  # Horizontal line: y = -c/a
+            y_const = -c/a
+            # Substitute into circle equation: (x - h)² + (y_const - k)² = r²
+            dx_squared = radius**2 - (y_const - center_y)**2
+            if dx_squared >= 0:
+                dx = math.sqrt(dx_squared)
+                intersections.append((center_x + dx, y_const))
+                if dx > 0:
+                    intersections.append((center_x - dx, y_const))
+        
+        return intersections
+    
     def extend_line(self, line: List[Dict], extension_factor: float = 2.0) -> List[Dict]:
         """
         Extend a line segment by a given factor to help find intersections.
@@ -218,11 +327,11 @@ class LineIntersectionCalculator:
             if intersection:
                 keypoints['10_sideline_bottom_left'] = intersection
         
-        # 11. Left semicircle (highest x coordinate)
-        if circle_left:
-            # Find the point with highest x coordinate in the left circle
-            max_x_point = max(circle_left, key=lambda p: p['x'])
-            keypoints['11_left_semicircle_right'] = (max_x_point['x'], max_x_point['y'])
+        # 11. Left semicircle (max distance from big_rect_left_main)
+        if circle_left and big_rect_left_main:
+            # Find the point with maximum distance from big_rect_left_main
+            farthest_point = max(circle_left, key=lambda p: self.point_to_line_distance(p, big_rect_left_main))
+            keypoints['11_left_semicircle_right'] = (farthest_point['x'], farthest_point['y'])
         
         # CENTER KEYPOINTS (12-18)
         
@@ -238,116 +347,97 @@ class LineIntersectionCalculator:
             if intersection:
                 keypoints['13_center_line_bottom'] = intersection
         
-        # 14. Center circle left (lowest x coordinate)
-        if circle_central:
-            # Find the point with lowest x coordinate in the central circle
-            min_x_point = min(circle_central, key=lambda p: p['x'])
-            keypoints['14_center_circle_left'] = (min_x_point['x'], min_x_point['y'])
-        
-        # 15. Center circle top (intersects center line, higher y)
+        # 14. Center circle top (intersects center line, higher y)
         if circle_central and middle_line:
-            # For circle-line intersection, we need to find points on circle closest to the line
-            # Simplified approach: find circle points with x closest to center line x
-            if middle_line and len(middle_line) >= 2:
-                center_line_x = (middle_line[0]['x'] + middle_line[1]['x']) / 2
-                closest_points = sorted(circle_central, key=lambda p: abs(p['x'] - center_line_x))[:2]
-                if len(closest_points) >= 2:
-                    # Take the one with higher y (top)
-                    top_point = max(closest_points, key=lambda p: p['y'])
-                    keypoints['15_center_circle_top'] = (top_point['x'], top_point['y'])
+            intersections = self.circle_line_intersection(circle_central, middle_line)
+            if len(intersections) >= 1:
+                # Take the intersection with higher y (top)
+                top_intersection = max(intersections, key=lambda p: p[1])
+                keypoints['14_center_circle_top'] = top_intersection
         
-        # 16. Center circle right (highest x coordinate)
-        if circle_central:
-            # Find the point with highest x coordinate in the central circle
-            max_x_point = max(circle_central, key=lambda p: p['x'])
-            keypoints['16_center_circle_right'] = (max_x_point['x'], max_x_point['y'])
-        
-        # 17. Center circle bottom (intersects center line, lower y)
+        # 15. Center circle bottom (intersects center line, lower y)
         if circle_central and middle_line:
-            # Similar to top, but take the one with lower y
-            if middle_line and len(middle_line) >= 2:
-                center_line_x = (middle_line[0]['x'] + middle_line[1]['x']) / 2
-                closest_points = sorted(circle_central, key=lambda p: abs(p['x'] - center_line_x))[:2]
-                if len(closest_points) >= 2:
-                    # Take the one with lower y (bottom)
-                    bottom_point = min(closest_points, key=lambda p: p['y'])
-                    keypoints['17_center_circle_bottom'] = (bottom_point['x'], bottom_point['y'])
+            intersections = self.circle_line_intersection(circle_central, middle_line)
+            if len(intersections) >= 1:
+                # Take the intersection with lower y (bottom)
+                bottom_intersection = min(intersections, key=lambda p: p[1])
+                keypoints['15_center_circle_bottom'] = bottom_intersection
         
-        # 18. Center of the football field
-        if middle_line and len(middle_line) >= 2:
-            # Calculate center point of the field (intersection of center line with field center)
-            # Use midpoint of middle line or calculate intersection with horizontal center
-            center_x = (middle_line[0]['x'] + middle_line[1]['x']) / 2
-            center_y = (middle_line[0]['y'] + middle_line[1]['y']) / 2
-            keypoints['18_field_center'] = (center_x, center_y)
+        # 16. Center of the football field (middle of top and bottom circle points)
+        if '14_center_circle_top' in keypoints and '15_center_circle_bottom' in keypoints:
+            top_x, top_y = keypoints['14_center_circle_top']
+            bottom_x, bottom_y = keypoints['15_center_circle_bottom']
+            center_x = (top_x + bottom_x) / 2
+            center_y = (top_y + bottom_y) / 2
+            keypoints['16_field_center'] = (center_x, center_y)
         
-        # RIGHT SIDE KEYPOINTS (19-30) - Mirror of left side
+        # RIGHT SIDE KEYPOINTS (17-28) - Mirror of left side
         
-        # 19. Side line Top right (mirror of 1)
+        # 17. Side line Top right (mirror of 1)
         if side_line_top and side_line_right:
             intersection = self.line_intersection(side_line_top, side_line_right)
             if intersection:
-                keypoints['19_sideline_top_right'] = intersection
+                keypoints['17_sideline_top_right'] = intersection
         
-        # 20. Big rect right top pt 1 (closer to boundary) (mirror of 2)
+        # 18. Big rect right top pt 1 (closer to boundary) (mirror of 2)
         if side_line_right and big_rect_right_top:
             intersection = self.line_intersection(side_line_right, big_rect_right_top)
             if intersection:
-                keypoints['20_big_rect_right_top_pt1'] = intersection
+                keypoints['18_big_rect_right_top_pt1'] = intersection
         
-        # 21. Big rect right top pt 2 (mirror of 3)
+        # 19. Big rect right top pt 2 (mirror of 3)
         if big_rect_right_top and big_rect_right_main:
             intersection = self.line_intersection(big_rect_right_top, big_rect_right_main)
             if intersection:
-                keypoints['21_big_rect_right_top_pt2'] = intersection
+                keypoints['19_big_rect_right_top_pt2'] = intersection
         
-        # 22. Big rect right bottom pt 1 (closer to boundary) (mirror of 4)
+        # 20. Big rect right bottom pt 1 (closer to boundary) (mirror of 4)
         if side_line_right and big_rect_right_bottom:
             intersection = self.line_intersection(side_line_right, big_rect_right_bottom)
             if intersection:
-                keypoints['22_big_rect_right_bottom_pt1'] = intersection
+                keypoints['20_big_rect_right_bottom_pt1'] = intersection
         
-        # 23. Big rect right bottom pt 2 (mirror of 5)
+        # 21. Big rect right bottom pt 2 (mirror of 5)
         if big_rect_right_bottom and big_rect_right_main:
             intersection = self.line_intersection(big_rect_right_bottom, big_rect_right_main)
             if intersection:
-                keypoints['23_big_rect_right_bottom_pt2'] = intersection
+                keypoints['21_big_rect_right_bottom_pt2'] = intersection
         
-        # 24. Small rect right top pt 1 (closer to boundary) (mirror of 6)
+        # 22. Small rect right top pt 1 (closer to boundary) (mirror of 6)
         if side_line_right and small_rect_right_top:
             intersection = self.line_intersection(side_line_right, small_rect_right_top)
             if intersection:
-                keypoints['24_small_rect_right_top_pt1'] = intersection
+                keypoints['22_small_rect_right_top_pt1'] = intersection
         
-        # 25. Small rect right top pt 2 (mirror of 7)
+        # 23. Small rect right top pt 2 (mirror of 7)
         if small_rect_right_top and small_rect_right_main:
             intersection = self.line_intersection(small_rect_right_top, small_rect_right_main)
             if intersection:
-                keypoints['25_small_rect_right_top_pt2'] = intersection
+                keypoints['23_small_rect_right_top_pt2'] = intersection
         
-        # 26. Small rect right bottom pt 1 (closer to boundary) (mirror of 8)
+        # 24. Small rect right bottom pt 1 (closer to boundary) (mirror of 8)
         if side_line_right and small_rect_right_bottom:
             intersection = self.line_intersection(side_line_right, small_rect_right_bottom)
             if intersection:
-                keypoints['26_small_rect_right_bottom_pt1'] = intersection
+                keypoints['24_small_rect_right_bottom_pt1'] = intersection
         
-        # 27. Small rect right bottom pt 2 (mirror of 9)
+        # 25. Small rect right bottom pt 2 (mirror of 9)
         if small_rect_right_bottom and small_rect_right_main:
             intersection = self.line_intersection(small_rect_right_bottom, small_rect_right_main)
             if intersection:
-                keypoints['27_small_rect_right_bottom_pt2'] = intersection
+                keypoints['25_small_rect_right_bottom_pt2'] = intersection
         
-        # 28. Side line Bottom Right (mirror of 10)
+        # 26. Side line Bottom Right (mirror of 10)
         if side_line_bottom and side_line_right:
             intersection = self.line_intersection(side_line_bottom, side_line_right)
             if intersection:
-                keypoints['28_sideline_bottom_right'] = intersection
+                keypoints['26_sideline_bottom_right'] = intersection
         
-        # 29. Right semicircle (lowest x coordinate) (mirror of 11)
-        if circle_right:
-            # Find the point with lowest x coordinate in the right circle
-            min_x_point = min(circle_right, key=lambda p: p['x'])
-            keypoints['29_right_semicircle_left'] = (min_x_point['x'], min_x_point['y'])
+        # 27. Right semicircle (max distance from big_rect_right_main)
+        if circle_right and big_rect_right_main:
+            # Find the point with maximum distance from big_rect_right_main
+            farthest_point = max(circle_right, key=lambda p: self.point_to_line_distance(p, big_rect_right_main))
+            keypoints['27_right_semicircle_left'] = (farthest_point['x'], farthest_point['y'])
         
         self.field_keypoints = keypoints
         return self.field_keypoints, self.lines

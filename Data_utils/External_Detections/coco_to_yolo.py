@@ -1,29 +1,34 @@
+"""COCO to YOLO format converter.
+
+This script converts COCO format annotations to Ultralytics YOLO format,
+supporting both bounding boxes and segmentation masks.
+"""
+
+import argparse
 import json
 import os
 from pathlib import Path
 from tqdm import tqdm
-import argparse
 
-def coco_to_yolo(coco_json_path, output_labels_dir, use_segments=False):
-    """
-    Converts COCO format annotations to Ultralytics YOLO format.
+def coco_to_yolo(coco_json_path: str, output_labels_dir: str, use_segments: bool = False) -> None:
+    """Convert COCO format annotations to Ultralytics YOLO format.
 
     Args:
-        coco_json_path (str): Path to the COCO JSON annotation file.
-        output_labels_dir (str): Directory to save the YOLO format label files.
-        use_segments (bool): If True, convert segmentation polygons to YOLO format.
-                             If False, convert bounding boxes.
+        coco_json_path: Path to the COCO JSON annotation file
+        output_labels_dir: Directory to save the YOLO format label files
+        use_segments: If True, convert segmentation polygons to YOLO format,
+                     otherwise convert bounding boxes
     """
     output_labels_dir = Path(output_labels_dir)
     output_labels_dir.mkdir(parents=True, exist_ok=True)
 
-    with open(coco_json_path, 'r') as f:
+    with open(coco_json_path, 'r', encoding='utf-8') as f:
         coco_data = json.load(f)
 
     images = {img['id']: img for img in coco_data['images']}
     categories = {cat['id']: cat['name'] for cat in coco_data['categories']}
     
-    # Create a mapping from COCO category_id to a 0-indexed YOLO class_id
+    # Create mapping from COCO category_id to 0-indexed YOLO class_id
     coco_cat_ids = sorted(categories.keys())
     coco_to_yolo_class_id = {coco_cat_id: i for i, coco_cat_id in enumerate(coco_cat_ids)}
     
@@ -34,9 +39,9 @@ def coco_to_yolo(coco_json_path, output_labels_dir, use_segments=False):
     for coco_id, yolo_id in coco_to_yolo_class_id.items():
         print(f"  {coco_id} -> {yolo_id}: {categories[coco_id]}")
     
-    # Store class names in a classes.txt file (optional, but good practice for YOLO)
-    classes_txt_path = output_labels_dir.parent / 'classes.txt' # Often placed alongside train/val folders
-    with open(classes_txt_path, 'w') as f:
+    # Store class names in classes.txt file (YOLO best practice)
+    classes_txt_path = output_labels_dir.parent / 'classes.txt'
+    with open(classes_txt_path, 'w', encoding='utf-8') as f:
         for name in yolo_class_names:
             f.write(f"{name}\n")
     print(f"Saved class names to: {classes_txt_path}")
@@ -63,23 +68,22 @@ def coco_to_yolo(coco_json_path, output_labels_dir, use_segments=False):
                 yolo_class_id = coco_to_yolo_class_id.get(coco_cat_id)
 
                 if yolo_class_id is None:
-                    print(f"Warning: Category ID {coco_cat_id} not found in categories. Skipping annotation.")
+                    print(f"Warning: Category ID {coco_cat_id} not found in categories. Skipping.")
                     continue
 
                 if use_segments and 'segmentation' in ann and ann['segmentation']:
                     # Convert segmentation polygons
-                    # A single object can have multiple polygons (e.g., if occluded)
-                    # We take the first polygon for simplicity here.
-                    # YOLO format for segments: class_id x1 y1 x2 y2 ... xn yn (all normalized)
-                    # COCO segmentation: [[x1,y1,x2,y2,x3,y3,...]] or RLE
+                    # Single object can have multiple polygons (if occluded)
+                    # Taking first polygon for simplicity
+                    # YOLO format: class_id x1 y1 x2 y2 ... xn yn (normalized)
+                    # COCO format: [[x1,y1,x2,y2,x3,y3,...]] or RLE
                     
                     seg = ann['segmentation']
                     if isinstance(seg, list) and len(seg) > 0:
-                        # Take the first polygon
-                        polygon = seg[0] 
-                        if not isinstance(polygon, list) or len(polygon) < 6: # Need at least 3 points
-                            # print(f"Warning: Skipping invalid polygon for image {img_filename}, ann_id {ann.get('id')}")
-                            continue # Skip if not a valid polygon list
+                        # Take first polygon
+                        polygon = seg[0]
+                        if not isinstance(polygon, list) or len(polygon) < 6:  # Need ≥3 points
+                            continue  # Skip invalid polygons
 
                         normalized_polygon = []
                         for i in range(0, len(polygon), 2):
@@ -88,7 +92,7 @@ def coco_to_yolo(coco_json_path, output_labels_dir, use_segments=False):
                             normalized_polygon.extend([x, y])
                         
                         yolo_annotations.append(f"{yolo_class_id} " + " ".join(map(str, normalized_polygon)))
-                    # else: RLE or empty segmentation, not handled for simplicity
+                    # Note: RLE format not handled for simplicity
                 
                 elif not use_segments and 'bbox' in ann:
                     # Convert bounding box
@@ -108,37 +112,42 @@ def coco_to_yolo(coco_json_path, output_labels_dir, use_segments=False):
                         f"{yolo_class_id} {norm_x_center:.6f} {norm_y_center:.6f} {norm_width:.6f} {norm_height:.6f}"
                     )
 
-        # Write YOLO label file for this image
-        # Even if there are no annotations, an empty file should be created
+        # Write YOLO label file (create empty file even if no annotations)
         label_filename_base = Path(img_filename).stem
         label_file_path = output_labels_dir / f"{label_filename_base}.txt"
         
-        with open(label_file_path, 'w') as f_out:
+        with open(label_file_path, 'w', encoding='utf-8') as f_out:
             for line in yolo_annotations:
                 f_out.write(line + "\n")
 
-    print(f"Conversion complete. YOLO labels saved to: {output_labels_dir}")
-    print(f"Remember to create a data.yaml file for training with Ultralytics.")
+    print(f"✓ Conversion complete. YOLO labels saved to: {output_labels_dir}")
+    print("📝 Remember to create a data.yaml file for Ultralytics training.")
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Convert COCO JSON annotations to Ultralytics YOLO format.")
-    parser.add_argument("coco_json", type=str, help="Path to the COCO JSON annotation file (e.g., instances_train2017.json).")
-    parser.add_argument("output_dir", type=str, help="Directory to save the YOLO format label files (e.g., ./coco/labels/train2017).")
-    parser.add_argument("--use_segments", action='store_true', help="Convert segmentation data instead of bounding boxes. If annotations contain polygons.")
+def main() -> None:
+    """Main function to handle command line arguments and execute conversion."""
+    parser = argparse.ArgumentParser(
+        description="Convert COCO JSON annotations to Ultralytics YOLO format."
+    )
+    parser.add_argument(
+        "coco_json", 
+        type=str, 
+        help="Path to COCO JSON annotation file (e.g., instances_train2017.json)"
+    )
+    parser.add_argument(
+        "output_dir", 
+        type=str, 
+        help="Directory to save YOLO format labels (e.g., ./coco/labels/train2017)"
+    )
+    parser.add_argument(
+        "--use_segments", 
+        action='store_true', 
+        help="Convert segmentation polygons instead of bounding boxes"
+    )
     
     args = parser.parse_args()
-
-    # Example Usage:
-    # python coco_to_yolo.py path/to/your/coco_annotations.json path/to/output/yolo_labels --use_segments (optional)
-
     coco_to_yolo(args.coco_json, args.output_dir, args.use_segments)
 
-    # --- Example data.yaml structure (you'll need to create this manually or script it) ---
-    # train: ../coco/images/train2017  # path to train images
-    # val: ../coco/images/val2017    # path to val images
-    # test: ../coco/images/test2017   # path to test images (optional)
-    #
-    # # Classes
-    # nc: 80  # number of classes
-    # names: ['person', 'bicycle', ..., 'toothbrush'] # From your classes.txt or directly
-    # --------------------------------------------------------------------------------------
+
+if __name__ == '__main__':
+    main()
+

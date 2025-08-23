@@ -170,5 +170,5 @@ Models/Trained/*
 *.ipynb
 *.md
 *.png
-
+.claude*
 
