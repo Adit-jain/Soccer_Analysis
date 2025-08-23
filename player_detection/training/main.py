@@ -34,19 +34,16 @@ def parse_args():
     # Model configuration
     parser.add_argument(
         '--model-name',
-        default='yolov11_sahi_1280',
         help='Model name for saving'
     )
     
     parser.add_argument(
         '--run',
-        default='First',
         help='Run identifier'
     )
     
     parser.add_argument(
         '--start-model',
-        default='original_yolo11n',
         help='Starting model name'
     )
     
@@ -59,42 +56,36 @@ def parse_args():
     parser.add_argument(
         '--epochs',
         type=int,
-        default=200,
         help='Number of training epochs'
     )
     
     parser.add_argument(
         '--img-size',
         type=int,
-        default=1280,
         help='Input image size'
     )
     
     parser.add_argument(
         '--batch-size',
         type=int,
-        default=32,
         help='Batch size for training'
     )
     
     parser.add_argument(
         '--lr0',
         type=float,
-        default=0.01,
         help='Initial learning rate'
     )
     
     parser.add_argument(
         '--dropout',
         type=float,
-        default=0.3,
         help='Dropout rate'
     )
     
     # Dataset configuration
     parser.add_argument(
         '--data',
-        default=r"F:\Datasets\SoccerAnalysis_Final\V1\data.yaml",
         help='Path to dataset YAML file'
     )
     
@@ -131,21 +122,32 @@ def main():
     args = parse_args()
     
     try:
-        # Create configuration
-        config_params = {
-            'model_name': args.model_name,
-            'run': args.run,
-            'start_model_name': args.start_model,
-            'epochs': args.epochs,
-            'img_size': args.img_size,
-            'batch_size': args.batch_size,
-            'lr0': args.lr0,
-            'dropout': args.dropout,
-            'dataset_yaml_path': args.data,
-            'resume': args.resume,
-            'freeze': args.freeze,
-            'single_cls': args.single_cls
-        }
+        # Create configuration with only provided arguments
+        config_params = {}
+        if args.model_name is not None:
+            config_params['model_name'] = args.model_name
+        if args.run is not None:
+            config_params['run'] = args.run
+        if args.start_model is not None:
+            config_params['start_model_name'] = args.start_model
+        if args.epochs is not None:
+            config_params['epochs'] = args.epochs
+        if args.img_size is not None:
+            config_params['img_size'] = args.img_size
+        if args.batch_size is not None:
+            config_params['batch_size'] = args.batch_size
+        if args.lr0 is not None:
+            config_params['lr0'] = args.lr0
+        if args.dropout is not None:
+            config_params['dropout'] = args.dropout
+        if args.data is not None:
+            config_params['dataset_yaml_path'] = args.data
+        if args.resume:
+            config_params['resume'] = args.resume
+        if args.freeze:
+            config_params['freeze'] = args.freeze
+        if args.single_cls:
+            config_params['single_cls'] = args.single_cls
         
         config = create_custom_config(**config_params)
         

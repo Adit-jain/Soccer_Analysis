@@ -63,7 +63,7 @@ class LineIntersectionCalculator:
             line2: List of 2 dictionaries with 'x', 'y' coordinates (normalized 0-1)
             
         Returns:
-            Tuple of (x, y) intersection coordinates in normalized form, or None if lines don't intersect
+            Tuple of (x, y) intersection coordinates in normalized form, or None if lines don't intersect or intersection is out of bounds
         """
         if len(line1) < 2 or len(line2) < 2:
             return None
@@ -86,6 +86,10 @@ class LineIntersectionCalculator:
         # Calculate intersection point
         x_intersect = x1 + t * (x2 - x1)
         y_intersect = y1 + t * (y2 - y1)
+        
+        # Check if intersection is within valid bounds [0, 1]
+        if x_intersect < 0.0 or x_intersect > 1.0 or y_intersect < 0.0 or y_intersect > 1.0:
+            return None
         
         return x_intersect, y_intersect
     
@@ -331,7 +335,9 @@ class LineIntersectionCalculator:
         if circle_left and big_rect_left_main:
             # Find the point with maximum distance from big_rect_left_main
             farthest_point = max(circle_left, key=lambda p: self.point_to_line_distance(p, big_rect_left_main))
-            keypoints['11_left_semicircle_right'] = (farthest_point['x'], farthest_point['y'])
+            # Check if point is within valid bounds
+            if 0.0 <= farthest_point['x'] <= 1.0 and 0.0 <= farthest_point['y'] <= 1.0:
+                keypoints['11_left_semicircle_right'] = (farthest_point['x'], farthest_point['y'])
         
         # CENTER KEYPOINTS (12-18)
         
@@ -353,7 +359,9 @@ class LineIntersectionCalculator:
             if len(intersections) >= 1:
                 # Take the intersection with higher y (top)
                 top_intersection = max(intersections, key=lambda p: p[1])
-                keypoints['14_center_circle_top'] = top_intersection
+                # Check if intersection is within valid bounds
+                if 0.0 <= top_intersection[0] <= 1.0 and 0.0 <= top_intersection[1] <= 1.0:
+                    keypoints['14_center_circle_top'] = top_intersection
         
         # 15. Center circle bottom (intersects center line, lower y)
         if circle_central and middle_line:
@@ -361,7 +369,9 @@ class LineIntersectionCalculator:
             if len(intersections) >= 1:
                 # Take the intersection with lower y (bottom)
                 bottom_intersection = min(intersections, key=lambda p: p[1])
-                keypoints['15_center_circle_bottom'] = bottom_intersection
+                # Check if intersection is within valid bounds
+                if 0.0 <= bottom_intersection[0] <= 1.0 and 0.0 <= bottom_intersection[1] <= 1.0:
+                    keypoints['15_center_circle_bottom'] = bottom_intersection
         
         # 16. Center of the football field (middle of top and bottom circle points)
         if '14_center_circle_top' in keypoints and '15_center_circle_bottom' in keypoints:
@@ -437,7 +447,9 @@ class LineIntersectionCalculator:
         if circle_right and big_rect_right_main:
             # Find the point with maximum distance from big_rect_right_main
             farthest_point = max(circle_right, key=lambda p: self.point_to_line_distance(p, big_rect_right_main))
-            keypoints['27_right_semicircle_left'] = (farthest_point['x'], farthest_point['y'])
+            # Check if point is within valid bounds
+            if 0.0 <= farthest_point['x'] <= 1.0 and 0.0 <= farthest_point['y'] <= 1.0:
+                keypoints['27_right_semicircle_left'] = (farthest_point['x'], farthest_point['y'])
         
         self.field_keypoints = keypoints
         return self.field_keypoints, self.lines

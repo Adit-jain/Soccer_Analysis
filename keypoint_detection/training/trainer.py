@@ -9,7 +9,7 @@ PROJECT_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(PROJECT_DIR))
 
 from ultralytics import YOLO
-from .config import TrainingConfig, get_default_config
+from keypoint_detection.training.config import TrainingConfig, get_default_config
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -35,7 +35,8 @@ class YOLOKeypointTrainer:
             logger.warning(f"Dataset YAML not found: {self.config.dataset_yaml_path}")
             logger.info("Please ensure dataset is properly configured before training")
         
-        if not self.config.model_path.exists():
+        if not self.config.model_path.exists() and not 'Pretrained' in str(self.config.model_path):
+            print(self.config.model_path)
             raise FileNotFoundError(f"Model file not found: {self.config.model_path}")
     
     def load_model(self) -> YOLO:
@@ -67,7 +68,6 @@ class YOLOKeypointTrainer:
         logger.info(f"Starting keypoint detection training: {self.config.model_name}/{self.config.run}")
         logger.info(f"Dataset: {self.config.dataset_yaml_path}")
         logger.info(f"Epochs: {train_params['epochs']}, Batch size: {train_params['batch']}")
-        logger.info(f"Keypoint shape: {train_params['kpt_shape']}, Pose loss weight: {train_params['pose']}")
         
         # Create output directory if it doesn't exist
         output_dir = Path(train_params['project'])
@@ -187,7 +187,5 @@ class YOLOKeypointTrainer:
             'epochs': self.config.epochs,
             'img_size': self.config.img_size,
             'batch_size': self.config.batch_size,
-            'keypoint_shape': self.config.kpt_shape,
-            'pose_loss_weight': self.config.pose_loss_weight,
             'output_dir': str(self.config.project_dir / self.config.run)
         }

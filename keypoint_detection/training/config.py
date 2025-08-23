@@ -14,25 +14,21 @@ class TrainingConfig:
     """Configuration class for YOLO keypoint detection model training."""
     
     # Dataset configuration
-    dataset_yaml_path: str = r"F:\Datasets\SoccerNet\Data\calibration\keypoints_dataset.yaml"
+    dataset_yaml_path: str = r"F:\Datasets\SoccerNet\Data\calibration\dataset.yaml"
     
     # Model configuration
     model_name: str = 'yolov11_keypoints'
     run: str = 'First'
-    start_model_name: str = 'original_yolo11n-pose'
+    start_model_name: str = 'original_yolo11m-pose'
     start_model_run: str = 'First'
     
     # Training hyperparameters
     epochs: int = 150
     img_size: int = 640
-    batch_size: int = 16
+    batch_size: int = 32
     lr0: float = 0.01
     lrf: float = 0.01
-    dropout: float = 0.2
-    
-    # Keypoint specific parameters
-    pose_loss_weight: float = 5.0  # Weight for pose/keypoint loss
-    kpt_shape: tuple = (27, 3)     # 27 keypoints with (x, y, visibility)
+    dropout: float = 0.3
     
     # Training settings
     resume: bool = False
@@ -41,6 +37,13 @@ class TrainingConfig:
     freeze: bool = False
     seed: int = 44
     plots: bool = True
+
+    # Augmentation settings
+    fliplr: float = 0.0
+    mosaic: float = 0.3
+    
+    # Hardware settings
+    device: int = 0
     
     def __post_init__(self):
         """Set model path based on start_model_name."""
@@ -73,9 +76,10 @@ class TrainingConfig:
             'lr0': self.lr0,
             'lrf': self.lrf,
             'dropout': self.dropout,
+            'fliplr': self.fliplr,
+            'mosaic': self.mosaic,
             'plots': self.plots,
-            'pose': self.pose_loss_weight,  # Keypoint loss weight
-            'kpt_shape': self.kpt_shape     # Keypoint shape (num_keypoints, dims)
+            'device': self.device,
         }
 
 

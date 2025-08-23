@@ -163,12 +163,12 @@ def process_unified_soccernet_dataset() -> None:
     
     # Process each dataset type
     for dataset_type in ['train', 'test', 'valid']:
-        if not (calibration_dir / dataset_type).exists():
+        if not (calibration_dir / 'images' / dataset_type).exists():
             continue
             
         print(f"\n📁 Processing {dataset_type} dataset...")
         annotations_path = calibration_dir / 'soccernet_calibration_annotations' / dataset_type
-        images_path = calibration_dir / dataset_type
+        images_path = calibration_dir / 'images' / dataset_type
         
         if not annotations_path.exists():
             print(f"  Warning: Annotations path not found: {annotations_path}")

@@ -13,8 +13,9 @@ from typing import Optional
 PROJECT_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(PROJECT_DIR))
 
-from .config import create_custom_config
-from .trainer import YOLOKeypointTrainer
+from keypoint_detection.training.config import create_custom_config
+from keypoint_detection.training.trainer import YOLOKeypointTrainer
+import traceback
 
 
 def parse_args():
@@ -26,27 +27,25 @@ def parse_args():
     
     # Main action
     parser.add_argument(
-        'action',
+        '--action',
         choices=['train', 'validate', 'both', 'predict'],
-        help='Action to perform'
+        help='Action to perform',
+        default = 'train'
     )
     
     # Model configuration
     parser.add_argument(
         '--model-name',
-        default='yolov11_keypoints',
         help='Model name for saving'
     )
     
     parser.add_argument(
         '--run',
-        default='First',
         help='Run identifier'
     )
     
     parser.add_argument(
         '--start-model',
-        default='original_yolo11n-pose',
         help='Starting model name (use pose models for keypoint detection)'
     )
     
@@ -59,49 +58,42 @@ def parse_args():
     parser.add_argument(
         '--epochs',
         type=int,
-        default=150,
         help='Number of training epochs'
     )
     
     parser.add_argument(
         '--img-size',
         type=int,
-        default=640,
         help='Input image size'
     )
     
     parser.add_argument(
         '--batch-size',
         type=int,
-        default=16,
         help='Batch size for training'
     )
     
     parser.add_argument(
         '--lr0',
         type=float,
-        default=0.01,
         help='Initial learning rate'
     )
     
     parser.add_argument(
         '--dropout',
         type=float,
-        default=0.2,
         help='Dropout rate'
     )
     
     parser.add_argument(
         '--pose-loss-weight',
         type=float,
-        default=5.0,
         help='Weight for pose/keypoint loss'
     )
     
     # Dataset configuration
     parser.add_argument(
         '--data',
-        default=r"F:\Datasets\SoccerNet\Data\calibration\keypoints_dataset.yaml",
         help='Path to keypoint dataset YAML file'
     )
     
@@ -121,7 +113,6 @@ def parse_args():
     parser.add_argument(
         '--single-cls',
         action='store_true',
-        default=True,
         help='Train as single class (field/pitch)'
     )
     
@@ -140,7 +131,6 @@ def parse_args():
     parser.add_argument(
         '--save-pred',
         action='store_true',
-        default=True,
         help='Save prediction results'
     )
     
@@ -152,22 +142,34 @@ def main():
     args = parse_args()
     
     try:
-        # Create configuration
-        config_params = {
-            'model_name': args.model_name,
-            'run': args.run,
-            'start_model_name': args.start_model,
-            'epochs': args.epochs,
-            'img_size': args.img_size,
-            'batch_size': args.batch_size,
-            'lr0': args.lr0,
-            'dropout': args.dropout,
-            'pose_loss_weight': args.pose_loss_weight,
-            'dataset_yaml_path': args.data,
-            'resume': args.resume,
-            'freeze': args.freeze,
-            'single_cls': args.single_cls
-        }
+        # Create configuration with only provided arguments
+        config_params = {}
+        if args.model_name is not None:
+            config_params['model_name'] = args.model_name
+        if args.run is not None:
+            config_params['run'] = args.run
+        if args.start_model is not None:
+            config_params['start_model_name'] = args.start_model
+        if args.epochs is not None:
+            config_params['epochs'] = args.epochs
+        if args.img_size is not None:
+            config_params['img_size'] = args.img_size
+        if args.batch_size is not None:
+            config_params['batch_size'] = args.batch_size
+        if args.lr0 is not None:
+            config_params['lr0'] = args.lr0
+        if args.dropout is not None:
+            config_params['dropout'] = args.dropout
+        if args.pose_loss_weight is not None:
+            config_params['pose_loss_weight'] = args.pose_loss_weight
+        if args.data is not None:
+            config_params['dataset_yaml_path'] = args.data
+        if args.resume:
+            config_params['resume'] = args.resume
+        if args.freeze:
+            config_params['freeze'] = args.freeze
+        if args.single_cls:
+            config_params['single_cls'] = args.single_cls
         
         config = create_custom_config(**config_params)
         
@@ -208,7 +210,7 @@ def main():
             print(f"🎯 Running keypoint detection inference...")
             results = trainer.predict_keypoints(
                 source=args.source,
-                save=args.save_pred
+                save=args.save_pred if args.save_pred else True
             )
             print("✅ Keypoint detection inference completed successfully!")
         
@@ -219,6 +221,7 @@ def main():
         sys.exit(1)
     except Exception as e:
         print(f"\n❌ Error: {str(e)}")
+        traceback.print_exc()
         sys.exit(1)
 
 
