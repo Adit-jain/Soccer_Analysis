@@ -1,5 +1,3 @@
-import sys
-from pathlib import Path
-PROJECT_DIR = Path(__file__).resolve().parent.parent
-sys.path.append(str(PROJECT_DIR))
+from .tracking import TrackerManager, update_player_detections
 
+__all__ = ["TrackerManager", "update_player_detections"]

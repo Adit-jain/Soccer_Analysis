@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-PROJECT_DIR = Path(__file__).resolve().parent.parent
+PROJECT_DIR = Path(__file__).resolve().parent
 sys.path.append(str(PROJECT_DIR))
 
 model_path = r"Models\Trained\yolov11_sahi_1280\First\weights\best.pt"
