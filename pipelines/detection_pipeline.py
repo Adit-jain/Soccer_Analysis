@@ -67,7 +67,9 @@ class DetectionPipeline:
         self.model = None
         
     def initialize_model(self):
-        """Load the detection model."""
+        """
+        Load the detection model.
+        """
         print("Loading detection model...")
         self.model = load_detection_model(self.model_path)
         return self.model
@@ -187,31 +189,11 @@ class DetectionPipeline:
         print("Real-time detection stopped.")
 
 
-# Convenience functions for backward compatibility
-def detect_objects_in_video(video_path: str, output_path: str, model_path: str, 
-                           frame_count: int = 300) -> None:
-    """Convenience function for video detection."""
-    pipeline = DetectionPipeline(model_path)
-    
-
-
-def detect_objects_in_images(image_dir: str, model_path: str, model_2_path: Optional[str] = None, 
-                            visualize: bool = False, samples: Optional[int] = 10) -> List:
-    """Convenience function for image detection."""
-    pipeline = DetectionPipeline(model_path)
-    return 
-
-
-def detect_objects_realtime(video_path: str, model_path: str) -> None:
-    """Convenience function for real-time detection."""
-    
-    pipeline.detect_realtime(video_path)
-
-
 if __name__ == "__main__":
     from player_detection.detection_constants import model_path, test_video, test_video_output, test_image_dir
-    pipeline = DetectionPipeline(model_path)
     # Example usage - uncomment desired function
+    
+    pipeline = DetectionPipeline(model_path)
     # pipeline.detect_in_video(test_video, test_video_output, 300)
     # pipeline.detect_in_images(test_image_dir, None, True, 10)
     pipeline.detect_realtime(test_video)

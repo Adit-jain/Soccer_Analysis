@@ -19,7 +19,7 @@ class TrainingConfig:
     # Model configuration
     model_name: str = 'yolov11_keypoints'
     run: str = 'First'
-    start_model_name: str = 'original_yolo11m-pose'
+    start_model_name: str = 'yolov11_keypoints'
     start_model_run: str = 'First'
     
     # Training hyperparameters
@@ -31,7 +31,7 @@ class TrainingConfig:
     dropout: float = 0.3
     
     # Training settings
-    resume: bool = False
+    resume: bool = True
     save_period: int = 1
     single_cls: bool = True  # Single class for pitch/field
     freeze: bool = False
