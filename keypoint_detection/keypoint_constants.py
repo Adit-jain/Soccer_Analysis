@@ -109,9 +109,3 @@ GOAL_AREA_WIDTH = 18.3
 
 # Center circle radius (in meters)
 CENTER_CIRCLE_RADIUS = 9.15
-
-# Visualization colors (BGR format for OpenCV)
-KEYPOINT_COLOR = (0, 255, 0)       # Green for keypoints
-CONNECTION_COLOR = (255, 0, 0)     # Blue for connections
-FIELD_CORNER_COLOR = (0, 0, 255)   # Red for field corners
-TEXT_COLOR = (255, 255, 255)       # White for text

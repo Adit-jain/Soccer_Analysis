@@ -20,11 +20,8 @@ from keypoint_detection import (
     denormalize_keypoints, filter_visible_keypoints, extract_field_corners,
     calculate_field_dimensions
 )
-from keypoint_detection import (
-    KEYPOINT_NAMES, KEYPOINT_CONNECTIONS, FIELD_CORNERS, 
-    KEYPOINT_COLOR, CONNECTION_COLOR, FIELD_CORNER_COLOR, TEXT_COLOR,
-    CONFIDENCE_THRESHOLD, NUM_KEYPOINTS
-)
+from keypoint_detection import KEYPOINT_NAMES, KEYPOINT_CONNECTIONS, CONFIDENCE_THRESHOLD
+from player_annotations import AnnotatorManager
 from utils.vid_utils import read_video, write_video
 
 
@@ -39,6 +36,7 @@ class KeypointPipeline:
         """
         self.model_path = model_path
         self.model = None
+        self.annotator_manager = AnnotatorManager()
         
     def initialize_model(self):
         """
@@ -82,53 +80,20 @@ class KeypointPipeline:
             frame: Input frame to annotate
             keypoints: Detected keypoints array with shape (N, 27, 3)
             confidence_threshold: Minimum confidence to draw keypoint
+            draw_connections: Whether to draw connections between keypoints
+            draw_labels: Whether to draw keypoint labels
             
         Returns:
             Annotated frame
         """
-        annotated_frame = frame.copy()
-        
         if keypoints is None or keypoints.size == 0:
-            return annotated_frame
+            return frame
             
         # Filter visible keypoints
         filtered_keypoints = filter_visible_keypoints(keypoints, confidence_threshold)
-        
-        # Draw keypoints and connections for each detection
-        for kpts in filtered_keypoints:
-            
-            # Draw keypoint connections
-            if draw_connections:
-                for connection in KEYPOINT_CONNECTIONS:
-                    pt1_idx, pt2_idx = connection
-                    pt1 = kpts[pt1_idx]
-                    pt2 = kpts[pt2_idx]
-                    
-                    # Only draw if both points are visible
-                    if pt1[2] > confidence_threshold and pt2[2] > confidence_threshold:
-                        cv2.line(annotated_frame, 
-                            (int(pt1[0]), int(pt1[1])),
-                            (int(pt2[0]), int(pt2[1])),
-                            CONNECTION_COLOR, 2)
-            
-            # Draw keypoints
-            for kpt_idx, kpt in enumerate(kpts):
-                if kpt[2] > confidence_threshold:  # Check visibility
-                    x, y = int(kpt[0]), int(kpt[1])
-                    
-                    # Use different color for field corners
-                    color = FIELD_CORNER_COLOR if kpt_idx in FIELD_CORNERS.values() else KEYPOINT_COLOR
-                    
-                    # Draw keypoint circle
-                    cv2.circle(annotated_frame, (x, y), 5, color, -1)
-                    
-                    # Draw keypoint label
-                    if draw_labels:
-                        label = f"{kpt_idx}: {KEYPOINT_NAMES.get(kpt_idx, 'Unknown')}"
-                        cv2.putText(annotated_frame, label, (x + 10, y - 10),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.4, TEXT_COLOR, 1)
-        
-        return annotated_frame
+        return self.annotator_manager.annotate_keypoints(frame, filtered_keypoints, confidence_threshold, 
+                                                        draw_vertices=True, draw_edges=draw_connections, draw_labels=draw_labels, 
+                                                        KEYPOINT_CONNECTIONS=KEYPOINT_CONNECTIONS, KEYPOINT_NAMES=KEYPOINT_NAMES)
     
     def detect_in_images(self, image_dir: str, visualize: bool = False, samples: Optional[int] = 10) -> List[Tuple[np.ndarray, Dict]]:
         """Detect keypoints in a directory of images.
@@ -240,6 +205,6 @@ if __name__ == "__main__":
     # Example usage - uncomment desired function
     
     pipeline = KeypointPipeline(keypoint_model_path)
-    pipeline.detect_in_video(test_video, test_video_output, 300)
+    # pipeline.detect_in_video(test_video, test_video_output, 300)
     # pipeline.detect_in_images(test_images_path, True, 10)
-    # pipeline.detect_realtime(test_video)
+    pipeline.detect_realtime(test_video)

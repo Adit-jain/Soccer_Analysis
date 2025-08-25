@@ -11,7 +11,7 @@ from tqdm import tqdm
 from player_detection import load_detection_model, get_detections
 from player_tracking import TrackerManager, process_tracking_for_frame
 from player_clustering import ClusteringManager, train_clustering_models, get_cluster_labels
-from player_annotations import AnnotatorManager, annotate_players, convert_tracks_to_detections
+from player_annotations import AnnotatorManager
 
 
 class TrackingPipeline:
@@ -222,7 +222,6 @@ class TrackingPipeline:
         """
         print("Annotating frames...")
         annotated_frames = []
-        ellipse_annotator, triangle_annotator, label_annotator = self.annotator_manager.get_annotators()
         
         for index, frame in tqdm(enumerate(frames), total=len(frames)):
             # Get tracks for this frame
@@ -239,7 +238,7 @@ class TrackingPipeline:
                 ball_tracks = None
             
             # Convert to detections
-            player_detections, ball_detections, referee_detections = convert_tracks_to_detections(
+            player_detections, ball_detections, referee_detections = self.annotator_manager.convert_tracks_to_detections(
                 player_tracks, ball_tracks, referee_tracks
             )
             
@@ -248,9 +247,8 @@ class TrackingPipeline:
                 player_detections, _ = self.clustering_callback(frame, player_detections)
             
             # Annotate frame
-            annotated_frame = annotate_players(
-                frame, player_detections, ball_detections, referee_detections,
-                ellipse_annotator, triangle_annotator, label_annotator
+            annotated_frame = self.annotator_manager.annotate_all(
+                frame, player_detections, ball_detections, referee_detections
             )
             annotated_frames.append(annotated_frame)
         

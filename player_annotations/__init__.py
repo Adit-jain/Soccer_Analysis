@@ -1,3 +1,3 @@
-from .annotators import AnnotatorManager, annotate_players, convert_tracks_to_detections
+from .annotators import AnnotatorManager
 
-__all__ = ["AnnotatorManager", "annotate_players"]
+__all__ = ["AnnotatorManager"]

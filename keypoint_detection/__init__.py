@@ -23,10 +23,6 @@ from .keypoint_constants import (
     CONFIDENCE_THRESHOLD,
     FIFA_FIELD_LENGTH,
     FIFA_FIELD_WIDTH,
-    KEYPOINT_COLOR, 
-    CONNECTION_COLOR, 
-    FIELD_CORNER_COLOR, 
-    TEXT_COLOR,
 )
 
 __all__ = [

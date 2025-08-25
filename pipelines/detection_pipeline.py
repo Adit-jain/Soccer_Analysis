@@ -12,43 +12,13 @@ PROJECT_DIR = Path(__file__).resolve().parent.parent
 sys.path.append(str(PROJECT_DIR))
 
 from player_detection import load_detection_model, detect_objects_in_frames
+from player_annotations import AnnotatorManager
 from utils import read_video, write_video
 import cv2
 import random
 import os
 import numpy as np
-
-
-def draw_bounding_boxes(image: np.ndarray, boxes: np.ndarray, classes: np.ndarray, 
-                       confs: np.ndarray, class_names: dict) -> np.ndarray:
-    """Draw bounding boxes with labels on the image.
-    
-    Args:
-        image: Input image
-        boxes: Bounding boxes in xywh format
-        classes: Class IDs
-        confs: Confidence scores
-        class_names: Dictionary mapping class IDs to names
-        
-    Returns:
-        Image with drawn bounding boxes
-    """
-    annotated_image = image.copy()
-    
-    for box, cls, conf in zip(boxes, classes, confs):
-        x, y, w, h = box
-        # Convert from center format to corner format
-        x1, y1 = int(x - w/2), int(y - h/2)
-        x2, y2 = int(x + w/2), int(y + h/2)
-        
-        class_name = class_names[int(cls)]
-        
-        # Draw rectangle and label
-        cv2.rectangle(annotated_image, (x1, y1), (x2, y2), (0, 255, 0), 2)
-        cv2.putText(annotated_image, f"{class_name} {conf:.2f}", 
-                   (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-    
-    return annotated_image
+import supervision as sv
 
 
 class DetectionPipeline:
@@ -65,6 +35,7 @@ class DetectionPipeline:
         """
         self.model_path = model_path
         self.model = None
+        self.annotator_manager = AnnotatorManager()
         
     def initialize_model(self):
         """
@@ -96,15 +67,8 @@ class DetectionPipeline:
         annotated_frames = []
         for index, result in enumerate(results):
             frame = video_frames[index]
-            
-            if result.boxes is not None:
-                class_names = result.names
-                boxes = result.boxes.xywh.cpu().numpy()
-                classes = result.boxes.cls.cpu().numpy()
-                confs = result.boxes.conf.cpu().numpy()
-                
-                frame = draw_bounding_boxes(frame, boxes, classes, confs, class_names)
-            
+            bbox_detection = sv.Detections.from_ultralytics(result)    
+            frame = self.annotator_manager.annotate_bboxes(frame, bbox_detection, result.names)
             annotated_frames.append(frame)
 
         print("Writing output video...")
@@ -180,7 +144,6 @@ class DetectionPipeline:
             annotated_frame = results[0].plot()
             
             cv2.imshow("Soccer Analysis - Real-time Detection", annotated_frame)
-            
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
@@ -194,6 +157,6 @@ if __name__ == "__main__":
     # Example usage - uncomment desired function
     
     pipeline = DetectionPipeline(model_path)
-    # pipeline.detect_in_video(test_video, test_video_output, 300)
+    pipeline.detect_in_video(test_video, test_video_output, 300)
     # pipeline.detect_in_images(test_image_dir, None, True, 10)
-    pipeline.detect_realtime(test_video)
+    # pipeline.detect_realtime(test_video)
