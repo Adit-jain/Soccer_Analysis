@@ -15,7 +15,7 @@ test_video = r"F:\Datasets\SoccerNet\Data\Samples\3_min_samp.mp4"
 test_video_output = r"F:\Datasets\SoccerNet\Data\Samples\3_min_samp_keypoints.mp4"
 
 # Keypoint model configuration
-NUM_KEYPOINTS = 27
+NUM_KEYPOINTS = 29
 KEYPOINT_DIMENSIONS = 3  # (x, y, visibility)
 CONFIDENCE_THRESHOLD = 0.3
 
@@ -47,7 +47,9 @@ KEYPOINT_NAMES = {
     23: "small_rect_right_bottom_pt1", 
     24: "small_rect_right_bottom_pt2",
     25: "sideline_bottom_right",
-    26: "right_semicircle_left"
+    26: "right_semicircle_left",
+    27: "center_circle_left",
+    28: "center_circle_right",
 }
 
 # Keypoint connections for visualization
