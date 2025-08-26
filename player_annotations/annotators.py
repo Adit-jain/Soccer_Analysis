@@ -134,7 +134,8 @@ class AnnotatorManager:
 
     def annotate_keypoints(self, frame: np.ndarray, keypoints: np.ndarray, confidence_threshold: float = 0.3,
                           draw_vertices: bool = True, draw_edges = None, draw_labels: bool = True,
-                          KEYPOINT_CONNECTIONS=[], KEYPOINT_NAMES={}) -> np.ndarray:
+                          KEYPOINT_CONNECTIONS=[], KEYPOINT_NAMES={}, 
+                          KEYPOINT_COLOR=(0, 255, 0), CONNECTION_COLOR=(255, 0, 0), TEXT_COLOR=(255, 255, 255)) -> np.ndarray:
         """
         Annotate frame with detected keypoints using Vertex and Edge annotators.
 
@@ -149,17 +150,6 @@ class AnnotatorManager:
         Returns:
             Annotated frame
         """
-        KEYPOINT_COLOR = (0, 255, 0)       # Green for keypoints
-        CONNECTION_COLOR = (255, 0, 0)     # Blue for connections
-        FIELD_CORNER_COLOR = (0, 0, 255)   # Red for field corners
-        TEXT_COLOR = (255, 255, 255)       # White for text
-
-        FIELD_CORNERS = {
-            'top_left': 0,
-            'top_right': 16,
-            'bottom_left': 9,
-            'bottom_right': 25
-        }
 
         # Draw keypoints and connections for each detection
         for kpts in keypoints:
@@ -183,11 +173,8 @@ class AnnotatorManager:
                 if kpt[2] > confidence_threshold:  # Check visibility
                     x, y = int(kpt[0]), int(kpt[1])
 
-                    # Use different color for field corners
-                    color = FIELD_CORNER_COLOR if kpt_idx in FIELD_CORNERS.values() else KEYPOINT_COLOR
-
                     # Draw keypoint circle
-                    cv2.circle(frame, (x, y), 5, color, -1)
+                    cv2.circle(frame, (x, y), 5, KEYPOINT_COLOR, -1)
 
                     # Draw keypoint label
                     if draw_labels:

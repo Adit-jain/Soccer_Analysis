@@ -33,7 +33,7 @@ def transform_to_pitch_keypoints(detected_keypoints, confidence_threshold=0.3):
     
     if np.sum(filter_mask) < 4:
         print(f"Insufficient valid keypoints: {np.sum(filter_mask)} < 4")
-        return None
+        return None, None
     
     # Apply filter to get frame reference points (detected keypoints)
     frame_reference_points = keypoints[filter_mask, :2]  # Only x, y coordinates
@@ -85,13 +85,19 @@ def transform_to_pitch_keypoints(detected_keypoints, confidence_threshold=0.3):
     pitch_reference_points = all_pitch_points[pitch_indices]
     
     # Create ViewTransformer (source=pitch, target=image) 
-    view_transformer = ViewTransformer(
-        source=pitch_reference_points,
-        target=frame_reference_points
-    )
+    try:
+        view_transformer = ViewTransformer(
+            source=pitch_reference_points,
+            target=frame_reference_points
+        )
+    except ValueError as e:
+        print(f"Error creating ViewTransformer: {e}")
+        return None, None
     
     # Transform all points
     transformed_points = view_transformer.transform_points(points=all_pitch_points.copy())
+    transformed_points = np.concat((transformed_points, np.ones((len(transformed_points), 1), dtype=np.float32)), axis=1)
+    transformed_points = np.expand_dims(transformed_points, axis=0)
 
     return transformed_points, view_transformer
     
