@@ -82,7 +82,7 @@ class CompleteSoccerAnalysisPipeline:
         # Step 4: Process all frames with detections, tracking, and tactical analysis
         print("\n[Step 4/8] Processing frames with complete analysis...")
         tactical_frames = []
-        all_tracks = {'player': {}, 'ball': {}, 'referee': {}}
+        all_tracks = {'player': {}, 'ball': {}, 'referee': {}, 'player_classids': {}}
         
         for i, frame in enumerate(tqdm(frames, desc="Processing frames")):
 
@@ -92,27 +92,23 @@ class CompleteSoccerAnalysisPipeline:
             
             # Update with tracking
             player_detections = self.tracking_pipeline.tracking_callback(player_detections)
+
+            # Team assignment
+            if player_detections is not None:
+                player_detections, _ = self.tracking_pipeline.clustering_callback(frame, player_detections)
             
             # Store tracks for interpolation
             all_tracks = self.tracking_pipeline.convert_detection_to_tracks(player_detections, ball_detections, referee_detections, all_tracks, i)
             
-            # Convert to tactical analysis
-            view_transformer = self.tactical_pipeline.transform_keypoints_to_pitch(keypoints)
-            player_pitch_points = self.tactical_pipeline.transform_detections_to_pitch(player_detections, view_transformer)
-            ball_pitch_points = self.tactical_pipeline.transform_detections_to_pitch(ball_detections, view_transformer)
-            referee_pitch_points = self.tactical_pipeline.transform_detections_to_pitch(referee_detections, view_transformer)
-            
-            # Create tactical frame
-            tactical_frame = self.tactical_pipeline.create_tactical_frame(
-                player_pitch_points, ball_pitch_points, referee_pitch_points
-            )
+            # Get tactical frame from detections
+            tactical_frame, _ = self.tactical_pipeline.process_detections_for_tactical_analysis(player_detections, ball_detections, referee_detections, keypoints)
             tactical_frames.append(tactical_frame)
 
         # Step 5: Ball track interpolation
         print("\n[Step 5/8] Interpolating ball tracks...")
         all_tracks = self.processing_pipeline.interpolate_ball_tracks(all_tracks)
         
-        # Step 6: Player Team assignment and annottion
+        # Step 6: Player Annotation
         print("\n[Step 6/8] Assigning teams and Annotating frames with detections...")
         object_annotated_frames = self.tracking_pipeline.annotate_frames(frames, all_tracks)
 
@@ -121,7 +117,7 @@ class CompleteSoccerAnalysisPipeline:
         output_frames = []
         assert len(object_annotated_frames) == len(tactical_frames)
         for o_frame, t_frame in zip(object_annotated_frames, tactical_frames):
-            output_frame = self.tactical_pipeline.create_overlay_frame(o_frame, t_frame)
+            output_frame = self.tactical_pipeline.create_overlay_frame(o_frame, t_frame, overlay_size=(500, 350))
             output_frames.append(output_frame)
 
         # Step 8: Write final output video
@@ -145,5 +141,5 @@ if __name__ == "__main__":
     # Run Complete End-to-End Soccer Analysis Pipeline
     print("Starting Soccer Analysis...")
     pipeline = CompleteSoccerAnalysisPipeline(model_path, keypoint_model_path)
-    output_video = pipeline.analyze_video(test_video, frame_count=-1)    
+    output_video = pipeline.analyze_video(test_video, frame_count=100)    
     print(f"\nAnalysis finished! Output video: {output_video}")

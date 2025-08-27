@@ -178,14 +178,20 @@ class TrackingPipeline:
         Returns:
             Updated tracks dictionary with current frame detections
         """
-        # Store player tracks with tracker IDs
+        # Store player tracks with tracker IDs and class IDs
         if len(player_detections.xyxy) > 0:
-            for tracker_id, bbox in zip(player_detections.tracker_id, player_detections.xyxy):
+            for tracker_id, bbox, class_id in zip(player_detections.tracker_id, player_detections.xyxy, player_detections.class_id):
                 if index not in tracks['player']:
                     tracks['player'][index] = {}
                 tracks['player'][index][tracker_id] = [bbox[0], bbox[1], bbox[2], bbox[3]]
+                
+                # Store class IDs separately
+                if index not in tracks['player_classids']:
+                    tracks['player_classids'][index] = {}
+                tracks['player_classids'][index][tracker_id] = class_id
         else:
             tracks['player'][index] = {-1: [None]*4}
+            tracks['player_classids'][index] = {-1: None}
         
         # Store ball tracks (single detection per frame)
         if len(ball_detections.xyxy) > 0:
@@ -228,6 +234,7 @@ class TrackingPipeline:
             'player': {},
             'ball': {},
             'referee': {},
+            'player_classids': {},
         }
         
         for index, frame in tqdm(enumerate(frames), total=len(frames)):
@@ -236,6 +243,10 @@ class TrackingPipeline:
             
             # Tracking pipeline - update player tracking with ByteTrack
             player_detections = self.tracking_callback(player_detections)
+            
+            # Team assignment (clustering callback)
+            if player_detections is not None:
+                player_detections, _ = self.clustering_callback(frame, player_detections)
             
             # Convert detections to structured track format
             tracks = self.convert_detection_to_tracks(player_detections, ball_detections, referee_detections, tracks, index)
@@ -261,23 +272,21 @@ class TrackingPipeline:
             player_tracks = tracks['player'][index]
             ball_tracks = tracks['ball'][index]
             referee_tracks = tracks['referee'][index]
+            player_classids = tracks.get('player_classids', {}).get(index, None)
             
             # Clean up invalid tracks
             if -1 in player_tracks:
                 player_tracks = None
+                player_classids = None
             if -1 in referee_tracks:
                 referee_tracks = None
             if (not all(ball_tracks)) or np.isnan(ball_tracks).all():
                 ball_tracks = None
             
-            # Convert to detections
+            # Convert to detections with stored class IDs
             player_detections, ball_detections, referee_detections = self.annotator_manager.convert_tracks_to_detections(
-                player_tracks, ball_tracks, referee_tracks
+                player_tracks, ball_tracks, referee_tracks, player_classids
             )
-            
-            # Apply team assignment
-            if player_detections is not None:
-                player_detections, _ = self.clustering_callback(frame, player_detections)
             
             # Annotate frame
             annotated_frame = self.annotator_manager.annotate_all(

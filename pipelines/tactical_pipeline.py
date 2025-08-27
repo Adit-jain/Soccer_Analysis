@@ -109,13 +109,15 @@ class TacticalPipeline:
         return pitch_points if pitch_points is not None else np.array([]).reshape(0, 2)
     
     def create_tactical_frame(self, player_points: np.ndarray, ball_points: np.ndarray, 
-                            referee_points: np.ndarray, frame_size: Tuple[int, int] = (1050, 680)) -> np.ndarray:
+                            referee_points: np.ndarray, team2_points: np.ndarray = None, 
+                            frame_size: Tuple[int, int] = (1050, 680)) -> np.ndarray:
         """Create a tactical view frame showing positions on the pitch.
         
         Args:
-            player_points: Player positions in pitch coordinates (N, 2)
+            player_points: Team 1 player positions in pitch coordinates (N, 2)
             ball_points: Ball positions in pitch coordinates (N, 2) 
             referee_points: Referee positions in pitch coordinates (N, 2)
+            team2_points: Team 2 player positions in pitch coordinates (N, 2)
             frame_size: Size of output tactical frame (width, height)
             
         Returns:
@@ -124,7 +126,7 @@ class TacticalPipeline:
         # Create pitch visualization
         pitch_frame = draw_pitch(self.pitch_config)
         
-        # Draw player positions
+        # Draw team 1 player positions (class_id 0)
         if len(player_points) > 0:
             for point in player_points:
                 if not np.isnan(point).any():
@@ -135,8 +137,22 @@ class TacticalPipeline:
                     frame_x = int(x_ratio * frame_size[0])
                     frame_y = int(y_ratio * frame_size[1])
                     
-                    # Draw player as circle
-                    cv2.circle(pitch_frame, (frame_x, frame_y), 8, (0, 255, 0), -1)  # Green for players
+                    # Draw team 1 player as circle
+                    cv2.circle(pitch_frame, (frame_x, frame_y), 8, (128, 0, 128), -1)  # Purple for team 1
+        
+        # Draw team 2 player positions (class_id 1)
+        if team2_points is not None and len(team2_points) > 0:
+            for point in team2_points:
+                if not np.isnan(point).any():
+                    # Convert pitch coordinates to frame coordinates
+                    x_ratio = point[0] / 12000  # Pitch width is 12000 units
+                    y_ratio = point[1] / 7000   # Pitch height is 7000 units
+                    
+                    frame_x = int(x_ratio * frame_size[0])
+                    frame_y = int(y_ratio * frame_size[1])
+                    
+                    # Draw team 2 player as circle
+                    cv2.circle(pitch_frame, (frame_x, frame_y), 8, (0, 0, 255), -1)  # Red for team 2
         
         # Draw ball positions
         if len(ball_points) > 0:
@@ -149,7 +165,7 @@ class TacticalPipeline:
                     frame_y = int(y_ratio * frame_size[1])
                     
                     # Draw ball as circle
-                    cv2.circle(pitch_frame, (frame_x, frame_y), 6, (0, 0, 255), -1)  # Red for ball
+                    cv2.circle(pitch_frame, (frame_x, frame_y), 6, (255, 255, 255), -1)  # White for ball
         
         # Draw referee positions
         if len(referee_points) > 0:
@@ -163,9 +179,55 @@ class TacticalPipeline:
                     
                     # Draw referee as square
                     cv2.rectangle(pitch_frame, (frame_x-6, frame_y-6), 
-                                (frame_x+6, frame_y+6), (255, 0, 0), -1)  # Blue for referees
+                                (frame_x+6, frame_y+6), (0, 0, 0), -1)  # Black for referees
         
         return pitch_frame
+
+    def process_detections_for_tactical_analysis(self, player_detections, ball_detections, referee_detections, keypoints):
+        """Process Detections and Keypoints for tactical analysis.
+        
+        Args:
+            player_detections : Detections for players
+            ball_detections : Detections for ball
+            referee_detections : Detections for referee
+            keypoints : Keypoints of the soccer pitch
+            
+        Returns:
+            Tuple of (tactical_frame, metadata_dict)
+        """
+        # Get transformation matrix
+        view_transformer = self.transform_keypoints_to_pitch(keypoints)
+
+        # Separate player detections
+        team_1_detections = player_detections[player_detections.class_id == 0]
+        team_2_detections = player_detections[player_detections.class_id == 1]
+
+        # Transform detection
+        team1_points = self.transform_detections_to_pitch(team_1_detections, view_transformer)
+        team2_points = self.transform_detections_to_pitch(team_2_detections, view_transformer)
+        ball_pitch_points = self.transform_detections_to_pitch(ball_detections, view_transformer)
+        referee_pitch_points = self.transform_detections_to_pitch(referee_detections, view_transformer)
+        
+        # Create tactical frame with team separation
+        tactical_frame = self.create_tactical_frame(
+            team1_points, ball_pitch_points, referee_pitch_points, team2_points
+        )
+        
+        # Prepare metadata
+        metadata = {
+            'num_players': len(team1_points) + len(team2_points),
+            'num_team1_players': len(team1_points),
+            'num_team2_players': len(team2_points),
+            'num_balls': len(ball_pitch_points),
+            'num_referees': len(referee_pitch_points),
+            'transformation_valid': view_transformer is not None,
+            'team1_positions': team1_points.tolist() if len(team1_points) > 0 else [],
+            'team2_positions': team2_points.tolist() if len(team2_points) > 0 else [],
+            'ball_positions': ball_pitch_points.tolist() if len(ball_pitch_points) > 0 else [],
+            'referee_positions': referee_pitch_points.tolist() if len(referee_pitch_points) > 0 else []
+        }
+        
+        return tactical_frame, metadata
     
     def process_frame_for_tactical_analysis(self, frame: np.ndarray) -> Tuple[np.ndarray, Dict]:
         """Process a single frame for tactical analysis.
@@ -179,31 +241,10 @@ class TacticalPipeline:
         # Detect keypoints and objects
         keypoints = self.detect_frame_keypoints(frame)
         player_detections, ball_detections, referee_detections = self.detect_frame_objects(frame)
-        
-        # Get transformation matrix
-        view_transformer = self.transform_keypoints_to_pitch(keypoints)
-        
-        # Transform detections to pitch coordinates
-        player_pitch_points = self.transform_detections_to_pitch(player_detections, view_transformer)
-        ball_pitch_points = self.transform_detections_to_pitch(ball_detections, view_transformer)
-        referee_pitch_points = self.transform_detections_to_pitch(referee_detections, view_transformer)
-        
-        # Create tactical frame
-        tactical_frame = self.create_tactical_frame(
-            player_pitch_points, ball_pitch_points, referee_pitch_points
-        )
-        
-        # Prepare metadata
-        metadata = {
-            'num_players': len(player_pitch_points),
-            'num_balls': len(ball_pitch_points),
-            'num_referees': len(referee_pitch_points),
-            'transformation_valid': view_transformer is not None,
-            'player_positions': player_pitch_points.tolist() if len(player_pitch_points) > 0 else [],
-            'ball_positions': ball_pitch_points.tolist() if len(ball_pitch_points) > 0 else [],
-            'referee_positions': referee_pitch_points.tolist() if len(referee_pitch_points) > 0 else []
-        }
-        
+
+        # Process the Detections
+        tactical_frame, metadata = self.process_detections_for_tactical_analysis(player_detections, ball_detections, referee_detections, keypoints)
+
         return tactical_frame, metadata
     
     def create_overlay_frame(self, original_frame: np.ndarray, tactical_frame: np.ndarray, 

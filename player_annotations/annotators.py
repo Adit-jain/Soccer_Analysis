@@ -184,7 +184,7 @@ class AnnotatorManager:
 
         return frame
 
-    def convert_tracks_to_detections(self, player_tracks, ball_tracks, referee_tracks):
+    def convert_tracks_to_detections(self, player_tracks, ball_tracks, referee_tracks, player_classids=None):
         """
         Convert tracking data back to supervision detections format.
 
@@ -192,15 +192,23 @@ class AnnotatorManager:
             player_tracks: Player tracking data for a frame
             ball_tracks: Ball tracking data for a frame
             referee_tracks: Referee tracking data for a frame
+            player_classids: Player class ID data for a frame (optional)
 
         Returns:
             Tuple of converted detection objects
         """
         # Get the player detections
         if player_tracks is not None:
+            if player_classids is not None:
+                # Use stored class IDs
+                class_ids = [player_classids[tracker_id] for tracker_id in player_tracks.keys()]
+            else:
+                # Fall back to default class ID (0)
+                class_ids = [0] * len(player_tracks)
+            
             player_detections = sv.Detections(
                 xyxy=np.array(list(player_tracks.values())),
-                class_id=np.array([0] * len(player_tracks)),
+                class_id=np.array(class_ids),
                 tracker_id=np.array(list(player_tracks.keys()))
             )
         else:
