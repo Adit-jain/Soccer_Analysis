@@ -6,81 +6,144 @@ sys.path.append(str(PROJECT_DIR))
 from pipelines import TrackingPipeline, ProcessingPipeline, DetectionPipeline, KeypointPipeline, TacticalPipeline
 from constants import model_path, test_video
 from keypoint_detection.keypoint_constants import keypoint_model_path
+import numpy as np
+import time
+from tqdm import tqdm
+import supervision as sv
 
 
-def run_tracking_analysis(video_path: str, detection_model_path: str):
-    """Run complete tracking analysis with team assignment."""
-    tracking_pipeline = TrackingPipeline(detection_model_path)
-    processing_pipeline = ProcessingPipeline()
+class CompleteSoccerAnalysisPipeline:
+    """Complete end-to-end soccer analysis pipeline integrating all functionalities."""
     
-    tracking_pipeline.initialize_models()
-    tracking_pipeline.train_team_assignment_models(video_path)
-    
-    frames = processing_pipeline.read_video_frames(video_path, frame_count=-1)
-    tracks = tracking_pipeline.get_tracks(frames)
-    tracks = processing_pipeline.interpolate_ball_tracks(tracks)
-    
-    annotated_frames = tracking_pipeline.annotate_frames(frames, tracks)
-    output_path = processing_pipeline.generate_output_path(video_path, "_tracked")
-    processing_pipeline.write_video_output(annotated_frames, output_path, fps=30)
-    
-    print(f"Tracking analysis completed! Output saved to: {output_path}")
-    return output_path
+    def __init__(self, detection_model_path: str, keypoint_model_path: str):
+        """Initialize all pipeline components.
+        
+        Args:
+            detection_model_path: Path to YOLO detection model
+            keypoint_model_path: Path to YOLO keypoint detection model
+        """
+        self.detection_pipeline = DetectionPipeline(detection_model_path)
+        self.keypoint_pipeline = KeypointPipeline(keypoint_model_path)
+        self.tracking_pipeline = TrackingPipeline(detection_model_path)
+        self.tactical_pipeline = TacticalPipeline(keypoint_model_path, detection_model_path)
+        self.processing_pipeline = ProcessingPipeline()
+        
+    def initialize_models(self):
+        """Initialize all models required for complete analysis."""
+        
+        print("Initializing all pipeline models...")
+        start_time = time.time()
+        
+        # Initialize all pipeline models
+        self.detection_pipeline.initialize_model()
+        self.keypoint_pipeline.initialize_model()
+        self.tracking_pipeline.initialize_models()
+        self.tactical_pipeline.initialize_models()
+        
+        init_time = time.time() - start_time
+        print(f"All models initialized in {init_time:.2f}s")
+        
+    def analyze_video(self, video_path: str, frame_count: int = -1, output_suffix: str = "_complete_analysis"):
+        """Run complete end-to-end soccer analysis.
+        
+        Flow:
+        1. Read video
+        2. Detect keypoints and objects (players, ball, referees)
+        3. Update with tracking
+        4. Tactical Analysis
+        5. Interpolate ball tracks
+        6. Assign Teams
+        7. Tactical Overlay
+        8. Save Video
+        
+        Args:
+            video_path: Path to input video
+            frame_count: Number of frames to process (-1 for all)
+            output_suffix: Suffix for output video file
+            
+        Returns:
+            Path to output video
+        """
+        print("=== Starting Complete Soccer Analysis Pipeline ===")
+        total_start_time = time.time()
+        
+        # Step 1: Initialize all models
+        self.initialize_models()
+        
+        # Step 2: Train team assignment models
+        print("\n[Step 2/8] Training team assignment models...")
+        self.tracking_pipeline.train_team_assignment_models(video_path)
+        
+        # Step 3: Read video frames
+        print("\n[Step 3/8] Reading video frames...")
+        frames = self.processing_pipeline.read_video_frames(video_path, frame_count)
+        print(f"Loaded {len(frames)} frames for processing")
+        
+        # Step 4: Process all frames with detections, tracking, and tactical analysis
+        print("\n[Step 4/8] Processing frames with complete analysis...")
+        tactical_frames = []
+        all_tracks = {'player': {}, 'ball': {}, 'referee': {}}
+        
+        for i, frame in enumerate(tqdm(frames, desc="Processing frames")):
 
+            # Detect keypoints and objects
+            keypoints, _ = self.keypoint_pipeline.detect_keypoints_in_frame(frame)
+            player_detections, ball_detections, referee_detections = self.detection_pipeline.detect_frame_objects(frame)
+            
+            # Update with tracking
+            player_detections = self.tracking_pipeline.tracking_callback(player_detections)
+            
+            # Store tracks for interpolation
+            all_tracks = self.tracking_pipeline.convert_detection_to_tracks(player_detections, ball_detections, referee_detections, all_tracks, i)
+            
+            # Convert to tactical analysis
+            view_transformer = self.tactical_pipeline.transform_keypoints_to_pitch(keypoints)
+            player_pitch_points = self.tactical_pipeline.transform_detections_to_pitch(player_detections, view_transformer)
+            ball_pitch_points = self.tactical_pipeline.transform_detections_to_pitch(ball_detections, view_transformer)
+            referee_pitch_points = self.tactical_pipeline.transform_detections_to_pitch(referee_detections, view_transformer)
+            
+            # Create tactical frame
+            tactical_frame = self.tactical_pipeline.create_tactical_frame(
+                player_pitch_points, ball_pitch_points, referee_pitch_points
+            )
+            tactical_frames.append(tactical_frame)
 
-def run_tactical_analysis(video_path: str, keypoint_model_path: str, detection_model_path: str, 
-                         create_overlay: bool = True, frame_count: int = 300):
-    """Run tactical analysis with field coordinate transformation."""
-    tactical_pipeline = TacticalPipeline(keypoint_model_path, detection_model_path)
-    processing_pipeline = ProcessingPipeline()
-    
-    suffix = "_tactical_overlay" if create_overlay else "_tactical_only"
-    output_path = processing_pipeline.generate_output_path(video_path, suffix)
-    
-    tactical_pipeline.analyze_video(video_path, output_path, frame_count, create_overlay)
-    
-    print(f"Tactical analysis completed! Output saved to: {output_path}")
-    return output_path
+        # Step 5: Ball track interpolation
+        print("\n[Step 5/8] Interpolating ball tracks...")
+        all_tracks = self.processing_pipeline.interpolate_ball_tracks(all_tracks)
+        
+        # Step 6: Player Team assignment and annottion
+        print("\n[Step 6/8] Assigning teams and Annotating frames with detections...")
+        object_annotated_frames = self.tracking_pipeline.annotate_frames(frames, all_tracks)
 
+        # Step 7: Overlay object annotated frames with tactical frames
+        print("\n[Step 7/8] Overlaying Tactical frames...")
+        output_frames = []
+        assert len(object_annotated_frames) == len(tactical_frames)
+        for o_frame, t_frame in zip(object_annotated_frames, tactical_frames):
+            output_frame = self.tactical_pipeline.create_overlay_frame(o_frame, t_frame)
+            output_frames.append(output_frame)
 
-def run_detection_analysis(video_path: str, detection_model_path: str, frame_count: int = 300):
-    """Run basic detection analysis."""
-    detection_pipeline = DetectionPipeline(detection_model_path)
-    processing_pipeline = ProcessingPipeline()
-    
-    output_path = processing_pipeline.generate_output_path(video_path, "_detected")
-    detection_pipeline.detect_in_video(video_path, output_path, frame_count)
-    
-    print(f"Detection analysis completed! Output saved to: {output_path}")
-    return output_path
+        # Step 8: Write final output video
+        print("\n[Step 8/8] Writing complete analysis video...")
+        output_path = self.processing_pipeline.generate_output_path(video_path, output_suffix)
+        self.processing_pipeline.write_video_output(output_frames, output_path)
+        
+        # Summary
+        total_time = time.time() - total_start_time
+        print(f"\n=== Complete Soccer Analysis Finished ===")
+        print(f"Total processing time: {total_time:.2f}s")
+        print(f"Frames processed: {len(frames)}")
+        print(f"Average time per frame: {total_time/len(frames):.3f}s")
+        print(f"Output saved to: {output_path}")
+        
+        return output_path
 
-
-def run_keypoint_analysis(video_path: str, keypoint_model_path: str, frame_count: int = 300):
-    """Run keypoint detection analysis."""
-    keypoint_pipeline = KeypointPipeline(keypoint_model_path)
-    processing_pipeline = ProcessingPipeline()
-    
-    output_path = processing_pipeline.generate_output_path(video_path, "_keypoints")
-    keypoint_pipeline.detect_in_video(video_path, output_path, frame_count)
-    
-    print(f"Keypoint analysis completed! Output saved to: {output_path}")
-    return output_path
 
 
 if __name__ == "__main__":
-    # Choose analysis type (uncomment desired option)
-    
-    # Option 1: Tactical Analysis with Overlay (Recommended)
-    run_tactical_analysis(test_video, keypoint_model_path, model_path, create_overlay=True, frame_count=300)
-    
-    # Option 2: Complete Tracking Analysis with Team Assignment
-    # run_tracking_analysis(test_video, model_path)
-    
-    # Option 3: Basic Detection Analysis
-    # run_detection_analysis(test_video, model_path, frame_count=300)
-    
-    # Option 4: Keypoint Detection Analysis
-    # run_keypoint_analysis(test_video, keypoint_model_path, frame_count=300)
-    
-    # Option 5: Tactical Analysis without Overlay (Tactical View Only)
-    # run_tactical_analysis(test_video, keypoint_model_path, model_path, create_overlay=False, frame_count=300)
+    # Run Complete End-to-End Soccer Analysis Pipeline
+    print("Starting Soccer Analysis...")
+    pipeline = CompleteSoccerAnalysisPipeline(model_path, keypoint_model_path)
+    output_video = pipeline.analyze_video(test_video, frame_count=-1)    
+    print(f"\nAnalysis finished! Output video: {output_video}")

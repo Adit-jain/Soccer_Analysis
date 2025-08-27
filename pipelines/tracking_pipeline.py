@@ -18,6 +18,16 @@ from player_annotations import AnnotatorManager
 class TrackingPipeline:
     """
     Complete tracking pipeline that combines detection, tracking, clustering and annotation.
+    
+    This pipeline provides a comprehensive solution for soccer video analysis by:
+    - Object detection (players, ball, referees) using YOLO
+    - Multi-object tracking using ByteTrack
+    - Team assignment using SigLIP embeddings + UMAP + K-means clustering
+    - Video annotation and output generation
+    - Track extraction and ball interpolation support
+    
+    The pipeline is designed to work with the complete soccer analysis system
+    and can be used standalone or integrated with other pipelines.
     """
     
     def __init__(self, model_path):
@@ -153,16 +163,65 @@ class TrackingPipeline:
         player_detections.class_id = cluster_labels
         
         return player_detections, assignment_time
+
+    def convert_detection_to_tracks(self, player_detections, ball_detections, referee_detections, tracks, index):
+        """
+        Convert detection results to track format for storage.
+        
+        Args:
+            player_detections: Player detection results from YOLO
+            ball_detections: Ball detection results from YOLO
+            referee_detections: Referee detection results from YOLO
+            tracks: Existing tracks dictionary to update
+            index: Frame index for track storage
+            
+        Returns:
+            Updated tracks dictionary with current frame detections
+        """
+        # Store player tracks with tracker IDs
+        if len(player_detections.xyxy) > 0:
+            for tracker_id, bbox in zip(player_detections.tracker_id, player_detections.xyxy):
+                if index not in tracks['player']:
+                    tracks['player'][index] = {}
+                tracks['player'][index][tracker_id] = [bbox[0], bbox[1], bbox[2], bbox[3]]
+        else:
+            tracks['player'][index] = {-1: [None]*4}
+        
+        # Store ball tracks (single detection per frame)
+        if len(ball_detections.xyxy) > 0:
+            for bbox in ball_detections.xyxy:
+                tracks['ball'][index] = [bbox[0], bbox[1], bbox[2], bbox[3]]
+        else:
+            tracks['ball'][index] = [None]*4
+        
+        # Store referee tracks with sequential IDs
+        if len(referee_detections.xyxy) > 0:
+            for tracker_id, bbox in zip(np.arange(len(referee_detections.xyxy)), referee_detections.xyxy):
+                if index not in tracks['referee']:
+                    tracks['referee'][index] = {}
+                tracks['referee'][index][tracker_id] = [bbox[0], bbox[1], bbox[2], bbox[3]]
+        else:
+            tracks['referee'][index] = {-1: [None]*4}
     
+        return tracks
+
     def get_tracks(self, frames):
         """
         Process video frames and extract tracks for all objects.
         
+        This method processes each frame through detection and tracking pipelines,
+        then converts the results to a structured track format for storage.
+        
         Args:
-            frames: List of video frames
+            frames: List of video frames to process
             
         Returns:
-            Dictionary containing tracks for players, ball, and referees
+            Dictionary containing tracks with structure:
+            {
+                'player': {frame_idx: {tracker_id: [x1, y1, x2, y2]}},
+                'ball': {frame_idx: [x1, y1, x2, y2]},
+                'referee': {frame_idx: {referee_id: [x1, y1, x2, y2]}}
+            }
         """
         print("Processing frames and extracting tracks...")
         tracks = {
@@ -172,36 +231,14 @@ class TrackingPipeline:
         }
         
         for index, frame in tqdm(enumerate(frames), total=len(frames)):
-            # Detection
+            # Detection pipeline - detect objects in frame
             player_detections, ball_detections, referee_detections, det_time = self.detection_callback(frame)
             
-            # Tracking
+            # Tracking pipeline - update player tracking with ByteTrack
             player_detections = self.tracking_callback(player_detections)
             
-            # Store player tracks
-            if len(player_detections.xyxy) > 0:
-                for tracker_id, bbox in zip(player_detections.tracker_id, player_detections.xyxy):
-                    if index not in tracks['player']:
-                        tracks['player'][index] = {}
-                    tracks['player'][index][tracker_id] = [bbox[0], bbox[1], bbox[2], bbox[3]]
-            else:
-                tracks['player'][index] = {-1: [None]*4}
-            
-            # Store ball tracks
-            if len(ball_detections.xyxy) > 0:
-                for bbox in ball_detections.xyxy:
-                    tracks['ball'][index] = [bbox[0], bbox[1], bbox[2], bbox[3]]
-            else:
-                tracks['ball'][index] = [None]*4
-            
-            # Store referee tracks
-            if len(referee_detections.xyxy) > 0:
-                for tracker_id, bbox in zip(np.arange(len(referee_detections.xyxy)), referee_detections.xyxy):
-                    if index not in tracks['referee']:
-                        tracks['referee'][index] = {}
-                    tracks['referee'][index][tracker_id] = [bbox[0], bbox[1], bbox[2], bbox[3]]
-            else:
-                tracks['referee'][index] = {-1: [None]*4}
+            # Convert detections to structured track format
+            tracks = self.convert_detection_to_tracks(player_detections, ball_detections, referee_detections, tracks, index)
         
         return tracks
     
