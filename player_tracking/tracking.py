@@ -28,34 +28,30 @@ class TrackerManager:
     def get_tracker(self):
         """Get the configured tracker instance."""
         return self.tracker
-
-
-def update_player_detections(player_detections, tracker: sv.ByteTrack):
-    """
-    Update the player detections with the tracker.
     
-    Args:
-        player_detections: Detection results from YOLO
-        tracker: ByteTrack tracker instance
+    def update_player_detections(self, player_detections):
+        """
+        Update the player detections with the tracker.
         
-    Returns:
-        Updated detections with tracker IDs
-    """
-    player_detections = tracker.update_with_detections(player_detections)
-    return player_detections
-
-
-def process_tracking_for_frame(player_detections, tracker):
-    """
-    Process tracking for a single frame.
+        Args:
+            player_detections: Detection results from YOLO
+            
+        Returns:
+            Updated detections with tracker IDs
+        """
+        player_detections = self.tracker.update_with_detections(player_detections)
+        return player_detections
     
-    Args:
-        player_detections: Player detections for the frame
-        tracker: Tracker instance
+    def process_tracking_for_frame(self, player_detections):
+        """
+        Process tracking for a single frame.
         
-    Returns:
-        Updated player detections with tracking information
-    """
-    if len(player_detections.xyxy) > 0:
-        player_detections = update_player_detections(player_detections, tracker)
-    return player_detections
+        Args:
+            player_detections: Player detections for the frame
+            
+        Returns:
+            Updated player detections with tracking information
+        """
+        if len(player_detections.xyxy) > 0:
+            player_detections = self.update_player_detections(player_detections)
+        return player_detections

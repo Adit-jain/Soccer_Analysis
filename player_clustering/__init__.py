@@ -1,4 +1,9 @@
-from .clustering import ClusteringManager, get_cluster_labels, train_clustering_models
-from .embeddings import EmbeddingExtractor
+import sys
+from pathlib import Path
+PROJECT_DIR = Path(__file__).resolve().parent.parent
+sys.path.append(str(PROJECT_DIR))
 
-__all__ = ["ClusteringManager", "get_cluster_labels", "train_clustering_models", "EmbeddingExtractor"]
+from player_clustering.clustering import ClusteringManager
+from player_clustering.embeddings import EmbeddingExtractor
+
+__all__ = ["ClusteringManager", "EmbeddingExtractor"]

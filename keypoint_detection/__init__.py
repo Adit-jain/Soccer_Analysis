@@ -4,7 +4,12 @@ This module provides independent keypoint detection functionality for soccer fie
 following the modular architecture pattern of the Soccer Analysis project.
 """
 
-from .detect_keypoints import (
+import sys
+from pathlib import Path
+PROJECT_DIR = Path(__file__).resolve().parent.parent
+sys.path.append(str(PROJECT_DIR))
+
+from keypoint_detection.detect_keypoints import (
     load_keypoint_model,
     detect_keypoints_in_frames,
     get_keypoint_detections,
@@ -15,7 +20,7 @@ from .detect_keypoints import (
     calculate_field_dimensions
 )
 
-from .keypoint_constants import (
+from keypoint_detection.keypoint_constants import (
     KEYPOINT_NAMES,
     KEYPOINT_CONNECTIONS,
     FIELD_CORNERS,

@@ -87,45 +87,42 @@ class ClusteringManager:
         return cluster_labels, self.reducer, self.cluster_model
 
 
-def train_clustering_models(crops, clustering_manager: ClusteringManager):
-    """
-    Train the UMAP and K-means models on player crops.
-    
-    Args:
-        crops: List of player crop images
-        clustering_manager: ClusteringManager instance
+    def train_clustering_models(self, crops):
+        """
+        Train the UMAP and K-means models on player crops.
         
-    Returns:
-        Tuple of (cluster_labels, reducer, cluster_model)
-    """
-    if crops is None or len(crops) == 0:
-        raise ValueError("Crops list cannot be None or empty")
-    
-    # Process crops and train models
-    crop_batches = clustering_manager.embedding_extractor.create_batches(crops, 24)
-    cluster_labels, reducer, cluster_model = clustering_manager.process_batch(crop_batches, train=True)
-    
-    return cluster_labels, reducer, cluster_model
-
-
-def get_cluster_labels(frame, player_detections, clustering_manager: ClusteringManager, crops=None):
-    """
-    Get cluster labels for players in a single frame.
-    
-    Args:
-        frame: Input video frame
-        player_detections: Player detection results
-        clustering_manager: Trained ClusteringManager instance
-        crops: Pre-extracted crops (optional)
+        Args:
+            crops: List of player crop images
+            
+        Returns:
+            Tuple of (cluster_labels, reducer, cluster_model)
+        """
+        if crops is None or len(crops) == 0:
+            raise ValueError("Crops list cannot be None or empty")
         
-    Returns:
-        Cluster labels for the players
-    """
-    if crops is None:
-        # Extract player crops
-        crops = clustering_manager.embedding_extractor.get_player_crops(frame, player_detections)
-    
-    # Get cluster assignments
-    cluster_labels, _, _ = clustering_manager.process_batch([crops], train=False)
-    
-    return cluster_labels
+        # Process crops and train models
+        crop_batches = self.embedding_extractor.create_batches(crops, 24)
+        cluster_labels, reducer, cluster_model = self.process_batch(crop_batches, train=True)
+        
+        return cluster_labels, reducer, cluster_model
+
+    def get_cluster_labels(self, frame, player_detections, crops=None):
+        """
+        Get cluster labels for players in a single frame.
+        
+        Args:
+            frame: Input video frame
+            player_detections: Player detection results
+            crops: Pre-extracted crops (optional)
+            
+        Returns:
+            Cluster labels for the players
+        """
+        if crops is None:
+            # Extract player crops
+            crops = self.embedding_extractor.get_player_crops(frame, player_detections)
+        
+        # Get cluster assignments
+        cluster_labels, _, _ = self.process_batch([crops], train=False)
+        
+        return cluster_labels

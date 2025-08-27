@@ -8,9 +8,10 @@ import time
 import supervision as sv
 from tqdm import tqdm
 
-from player_detection import load_detection_model, get_detections
-from player_tracking import TrackerManager, process_tracking_for_frame
-from player_clustering import ClusteringManager, train_clustering_models, get_cluster_labels
+from pipelines.detection_pipeline import DetectionPipeline
+from pipelines.processing_pipeline import ProcessingPipeline
+from player_tracking import TrackerManager
+from player_clustering import ClusteringManager
 from player_annotations import AnnotatorManager
 
 
@@ -26,20 +27,20 @@ class TrackingPipeline:
         Args:
             model_path: Path to the YOLO detection model
         """
-        self.model_path = model_path
-        self.detection_model = None
+        self.detection_pipeline = DetectionPipeline(model_path)
+        self.processing_pipeline = ProcessingPipeline()
         self.tracker_manager = None
         self.clustering_manager = None
         self.annotator_manager = None
         
     def initialize_models(self):
         """Initialize all models required for the pipeline."""
-        print("Initializing models...")
+        print("Initializing tracking pipeline models...")
         model_init_time = time.time()
         
-        # Load detection model
-        print("Loading detection model...")
-        self.detection_model = load_detection_model(self.model_path)
+        # Initialize detection pipeline
+        print("Initializing detection pipeline...")
+        self.detection_pipeline.initialize_model()
         
         # Initialize tracker
         print("Initializing tracker...")
@@ -74,7 +75,7 @@ class TrackingPipeline:
         # Extract player crops
         crops = []
         for frame in tqdm(frame_generator, desc='collecting_crops'):
-            player_detections, _, _ = get_detections(self.detection_model, frame)
+            player_detections, _, _ = self.detection_pipeline.detect_frame_objects(frame)
             cropped_images = self.clustering_manager.embedding_extractor.get_player_crops(frame, player_detections)
             crops += cropped_images
         
@@ -98,9 +99,7 @@ class TrackingPipeline:
         crops = self.collect_training_crops(video_path)
         
         # Train clustering models
-        cluster_labels, reducer, cluster_model = train_clustering_models(
-            crops, self.clustering_manager
-        )
+        cluster_labels, reducer, cluster_model = self.clustering_manager.train_clustering_models(crops)
         
         training_time = time.time() - training_time
         print(f"Team assignment training completed in {training_time:.2f}s")
@@ -118,9 +117,7 @@ class TrackingPipeline:
             Tuple of detection results (player, ball, referee)
         """
         detection_time = time.time()
-        player_detections, ball_detections, referee_detections = get_detections(
-            self.detection_model, frame
-        )
+        player_detections, ball_detections, referee_detections = self.detection_pipeline.detect_frame_objects(frame)
         detection_time = time.time() - detection_time
         
         return player_detections, ball_detections, referee_detections, detection_time
@@ -135,8 +132,7 @@ class TrackingPipeline:
         Returns:
             Updated player detections with tracking information
         """
-        tracker = self.tracker_manager.get_tracker()
-        return process_tracking_for_frame(player_detections, tracker)
+        return self.tracker_manager.process_tracking_for_frame(player_detections)
     
     def clustering_callback(self, frame, player_detections):
         """
@@ -150,7 +146,7 @@ class TrackingPipeline:
             Updated player detections with team assignments
         """
         assignment_time = time.time()
-        cluster_labels = get_cluster_labels(frame, player_detections, self.clustering_manager)
+        cluster_labels = self.clustering_manager.get_cluster_labels(frame, player_detections)
         assignment_time = time.time() - assignment_time
         
         # Assign team labels
@@ -253,3 +249,126 @@ class TrackingPipeline:
             annotated_frames.append(annotated_frame)
         
         return annotated_frames
+    
+    def track_in_video(self, video_path: str, output_path: str, frame_count: int = -1):
+        """Analyze a complete video with tracking and team assignment.
+        
+        Args:
+            video_path: Path to input video
+            output_path: Path to save tracked video
+            frame_count: Number of frames to process (-1 for all frames)
+            train_models: Whether to train team assignment models from the video
+        """
+        self.initialize_models()
+        
+        # Train team assignment models
+        print("Training team assignment models...")
+        self.train_team_assignment_models(video_path)
+        
+        print("Reading video frames...")
+        frames = self.processing_pipeline.read_video_frames(video_path, frame_count)
+        
+        print("Extracting tracks from video...")
+        tracks = self.get_tracks(frames)
+        
+        print("Interpolating ball tracks...")
+        tracks = self.processing_pipeline.interpolate_ball_tracks(tracks)
+        
+        print("Annotating frames with tracking results...")
+        annotated_frames = self.annotate_frames(frames, tracks)
+        
+        print("Writing tracked video...")
+        self.processing_pipeline.write_video_output(annotated_frames, output_path)
+        
+        print(f"Tracking complete! Output saved to: {output_path}")
+        return tracks
+    
+    def track_realtime(self, video_path: str, display_metadata: bool = True):
+        """Run real-time tracking analysis on a video stream.
+        
+        Args:
+            video_path: Path to input video or camera index (0 for webcam)
+            train_models: Whether to train team assignment models first
+            display_metadata: Whether to display tracking metadata
+        """
+        import cv2
+        
+        self.initialize_models()
+        
+        # Train team assignment models
+        print("Training team assignment models...")
+        self.train_team_assignment_models(video_path)
+        
+        print("Opening video stream...")
+        cap = cv2.VideoCapture(video_path)
+        
+        if not cap.isOpened():
+            raise ValueError(f"Could not open video source: {video_path}")
+        
+        print("Starting real-time tracking analysis. Press 'q' to quit.")
+        
+        frame_count = 0
+        while cap.isOpened():
+            success, frame = cap.read()
+            if not success:
+                break
+            
+            frame_count += 1
+            
+            # Detection
+            player_detections, ball_detections, referee_detections, det_time = self.detection_callback(frame)
+            
+            # Tracking
+            player_detections = self.tracking_callback(player_detections)
+            
+            # Team assignment (if models are trained)
+            if player_detections is not None:
+                player_detections, _ = self.clustering_callback(frame, player_detections)
+            
+            # Annotate frame
+            annotated_frame = self.annotator_manager.annotate_all(
+                frame, player_detections, ball_detections, referee_detections
+            )
+            
+            # Add metadata overlay if requested
+            if display_metadata:
+                text_y = 30
+                cv2.putText(annotated_frame, f"Frame: {frame_count}", 
+                          (10, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+                text_y += 30
+                cv2.putText(annotated_frame, f"Players: {len(player_detections.xyxy) if player_detections is not None else 0}", 
+                          (10, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+                text_y += 30
+                cv2.putText(annotated_frame, f"Ball: {len(ball_detections.xyxy) if ball_detections is not None else 0}", 
+                          (10, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+                text_y += 30
+                cv2.putText(annotated_frame, f"Referees: {len(referee_detections.xyxy) if referee_detections is not None else 0}", 
+                          (10, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+                text_y += 30
+                cv2.putText(annotated_frame, f"Detection Time: {det_time:.3f}s", 
+                          (10, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            
+            cv2.imshow("Soccer Analysis - Real-time Tracking", annotated_frame)
+            
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+        
+        cap.release()
+        cv2.destroyAllWindows()
+        print("Real-time tracking analysis stopped.")
+
+
+if __name__ == "__main__":
+    from player_detection.detection_constants import model_path, test_video
+    
+    # Example usage
+    pipeline = TrackingPipeline(model_path)
+    
+    # Choose analysis mode (uncomment desired option)
+    
+    # Option 1: Video tracking analysis (saves to file)
+    # output_path = test_video.replace('.mp4', '_tracked.mp4')
+    # pipeline.track_in_video(test_video, output_path, frame_count=300, train_models=True)
+    
+    # Option 2: Real-time tracking analysis
+    pipeline.track_realtime(test_video, display_metadata=True)
