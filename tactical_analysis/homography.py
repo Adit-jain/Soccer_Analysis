@@ -17,7 +17,7 @@ class HomographyTransformer:
     Class for handling homography transformations between frame and pitch coordinates.
     """
     
-    def __init__(self, confidence_threshold=0.3):
+    def __init__(self, confidence_threshold=0.5):
         """
         Initialize the transformer.
         

@@ -132,7 +132,7 @@ class AnnotatorManager:
 
         return annotated_frame
 
-    def annotate_keypoints(self, frame: np.ndarray, keypoints: np.ndarray, confidence_threshold: float = 0.3,
+    def annotate_keypoints(self, frame: np.ndarray, keypoints: np.ndarray, confidence_threshold: float = 0.5,
                           draw_vertices: bool = True, draw_edges = None, draw_labels: bool = True,
                           KEYPOINT_CONNECTIONS=[], KEYPOINT_NAMES={}, 
                           KEYPOINT_COLOR=(0, 255, 0), CONNECTION_COLOR=(255, 0, 0), TEXT_COLOR=(255, 255, 255)) -> np.ndarray:
