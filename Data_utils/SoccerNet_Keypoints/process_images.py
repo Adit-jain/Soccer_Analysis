@@ -48,17 +48,18 @@ def create_ultralytics_annotation(
         f"{pitch_data['height']:.6f}"
     ]
     
-    # Add keypoints in a consistent order
+    # Add keypoints in a consistent order (0-28, total 29 keypoints)
     keypoint_order = [
-        '1_sideline_top_left', '2_big_rect_left_top_pt1', '3_big_rect_left_top_pt2',
-        '4_big_rect_left_bottom_pt1', '5_big_rect_left_bottom_pt2', '6_small_rect_left_top_pt1',
-        '7_small_rect_left_top_pt2', '8_small_rect_left_bottom_pt1', '9_small_rect_left_bottom_pt2',
-        '10_sideline_bottom_left', '11_left_semicircle_right', '12_center_line_top',
-        '13_center_line_bottom', '14_center_circle_top', '15_center_circle_bottom',
-        '16_field_center', '17_sideline_top_right', '18_big_rect_right_top_pt1',
-        '19_big_rect_right_top_pt2', '20_big_rect_right_bottom_pt1', '21_big_rect_right_bottom_pt2',
-        '22_small_rect_right_top_pt1', '23_small_rect_right_top_pt2', '24_small_rect_right_bottom_pt1',
-        '25_small_rect_right_bottom_pt2', '26_sideline_bottom_right', '27_right_semicircle_left'
+        '0_sideline_top_left', '1_big_rect_left_top_pt1', '2_big_rect_left_top_pt2',
+        '3_big_rect_left_bottom_pt1', '4_big_rect_left_bottom_pt2', '5_small_rect_left_top_pt1',
+        '6_small_rect_left_top_pt2', '7_small_rect_left_bottom_pt1', '8_small_rect_left_bottom_pt2',
+        '9_sideline_bottom_left', '10_left_semicircle_right', '11_center_line_top',
+        '12_center_line_bottom', '13_center_circle_top', '14_center_circle_bottom',
+        '15_field_center', '16_sideline_top_right', '17_big_rect_right_top_pt1',
+        '18_big_rect_right_top_pt2', '19_big_rect_right_bottom_pt1', '20_big_rect_right_bottom_pt2',
+        '21_small_rect_right_top_pt1', '22_small_rect_right_top_pt2', '23_small_rect_right_bottom_pt1',
+        '24_small_rect_right_bottom_pt2', '25_sideline_bottom_right', '26_right_semicircle_left',
+        '27_center_circle_left', '28_center_circle_right'
     ]
     
     # Add keypoints with visibility flag (2 = visible, 0 = not visible)
@@ -271,7 +272,7 @@ val: yolo_labels/valid
 test: yolo_labels/test
 
 # Number of keypoints
-kpt_shape: [27, 3]  # 27 keypoints, each with (x, y, visibility)
+kpt_shape: [29, 3]  # 29 keypoints, each with (x, y, visibility)
 
 # Class names
 names:
@@ -315,6 +316,8 @@ keypoint_names:
   24: small_rect_right_bottom_pt2
   25: sideline_bottom_right
   26: right_semicircle_left
+  27: center_circle_left
+  28: center_circle_right
 """
     
     yaml_path = base_output_dir / 'dataset.yaml'

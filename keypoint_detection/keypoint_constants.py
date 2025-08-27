@@ -4,7 +4,7 @@ PROJECT_DIR = Path(__file__).resolve().parent.parent
 sys.path.append(str(PROJECT_DIR))
 
 # Keypoint model paths
-keypoint_model_path = r"Models/Trained/yolov11_keypoints/First/weights/best.pt"
+keypoint_model_path = r"Models/Trained/yolov11_keypoints_29/First/weights/best.pt"
 keypoint_model_path = PROJECT_DIR / keypoint_model_path
 
 # Dataset configuration
@@ -17,9 +17,9 @@ test_video_output = r"F:\Datasets\SoccerNet\Data\Samples\3_min_samp_keypoints.mp
 # Keypoint model configuration
 NUM_KEYPOINTS = 29
 KEYPOINT_DIMENSIONS = 3  # (x, y, visibility)
-CONFIDENCE_THRESHOLD = 0.3
+CONFIDENCE_THRESHOLD = 0.5
 
-# Soccer field keypoint names (27 keypoints)
+# Soccer field keypoint names (29 keypoints)
 KEYPOINT_NAMES = {
     0: "sideline_top_left",
     1: "big_rect_left_top_pt1", 

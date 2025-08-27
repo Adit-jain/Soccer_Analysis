@@ -17,13 +17,13 @@ class TrainingConfig:
     dataset_yaml_path: str = r"F:\Datasets\SoccerNet\Data\calibration\dataset.yaml"
     
     # Model configuration
-    model_name: str = 'yolov11_keypoints'
+    model_name: str = 'yolov11_keypoints_29'
     run: str = 'First'
     start_model_name: str = 'yolov11_keypoints'
     start_model_run: str = 'First'
     
     # Training hyperparameters
-    epochs: int = 150
+    epochs: int = 50
     img_size: int = 640
     batch_size: int = 32
     lr0: float = 0.01
@@ -31,7 +31,7 @@ class TrainingConfig:
     dropout: float = 0.3
     
     # Training settings
-    resume: bool = True
+    resume: bool = False
     save_period: int = 1
     single_cls: bool = True  # Single class for pitch/field
     freeze: bool = False
