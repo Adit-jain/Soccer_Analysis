@@ -94,8 +94,7 @@ class CompleteSoccerAnalysisPipeline:
             player_detections = self.tracking_pipeline.tracking_callback(player_detections)
 
             # Team assignment
-            if player_detections is not None:
-                player_detections, _ = self.tracking_pipeline.clustering_callback(frame, player_detections)
+            player_detections, _ = self.tracking_pipeline.clustering_callback(frame, player_detections)
             
             # Store tracks for interpolation
             all_tracks = self.tracking_pipeline.convert_detection_to_tracks(player_detections, ball_detections, referee_detections, all_tracks, i)
@@ -141,5 +140,5 @@ if __name__ == "__main__":
     # Run Complete End-to-End Soccer Analysis Pipeline
     print("Starting Soccer Analysis...")
     pipeline = CompleteSoccerAnalysisPipeline(model_path, keypoint_model_path)
-    output_video = pipeline.analyze_video(test_video, frame_count=100)    
+    output_video = pipeline.analyze_video(test_video, frame_count=-1)    
     print(f"\nAnalysis finished! Output video: {output_video}")

@@ -156,12 +156,11 @@ class TrackingPipeline:
             Updated player detections with team assignments
         """
         assignment_time = time.time()
-        cluster_labels = self.clustering_manager.get_cluster_labels(frame, player_detections)
+        if len(player_detections.xyxy) > 0:
+            cluster_labels = self.clustering_manager.get_cluster_labels(frame, player_detections)
+            player_detections.class_id = cluster_labels
         assignment_time = time.time() - assignment_time
-        
-        # Assign team labels
-        player_detections.class_id = cluster_labels
-        
+
         return player_detections, assignment_time
 
     def convert_detection_to_tracks(self, player_detections, ball_detections, referee_detections, tracks, index):
