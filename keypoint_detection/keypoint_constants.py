@@ -4,7 +4,7 @@ PROJECT_DIR = Path(__file__).resolve().parent.parent
 sys.path.append(str(PROJECT_DIR))
 
 # Keypoint model paths
-keypoint_model_path = r"Models/Trained/yolov11_keypoints_29/First/weights/best.pt"
+keypoint_model_path = r"Models/Trained/yolov11_keypoints_29/Model/weights/best.pt"
 keypoint_model_path = PROJECT_DIR / keypoint_model_path
 
 # Dataset configuration
