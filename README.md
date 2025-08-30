@@ -1,6 +1,21 @@
 # ⚽ Soccer Analysis System
 
-A comprehensive computer vision system for analyzing soccer videos using state-of-the-art deep learning techniques. The system performs real-time detection of players, ball, and referees, tracks them across frames, assigns team colors, and provides tactical field analysis with coordinate transformations.
+A comprehensive computer vision system for analyzing soccer videos using deep learning techniques. The system performs real-time detection of players, ball, and referees, tracks them across frames, assigns team colors, and provides tactical field analysis with coordinate transformations.
+
+## 📑 Table of Contents
+
+1. [✨ Key Features](#-key-features)
+2. [🎬 DEMO](#-demo)
+3. [🏗️ Project Structure](#️-project-structure)
+   - [🧩 Core Submodules (Independent)](#-core-submodules-independent)
+   - [🚰 Pipeline Layer (Coordination)](#-pipeline-layer-coordination)
+   - [📁 Supporting Structure](#-supporting-structure)
+4. [🚀 How to Get Started](#-how-to-get-started)
+5. [🔄 In-Depth Pipelines](#-in-depth-pipelines)
+6. [📋 In-Depth main.py](#-in-depth-mainpy)
+7. [🔗 Quick Links to Models and Datasets](#-quick-links-to-models-and-datasets)
+
+---
 
 ## ✨ Key Features
 
@@ -10,6 +25,8 @@ A comprehensive computer vision system for analyzing soccer videos using state-o
 - **⚽ Field Analysis**: 29-keypoint field detection and homography transformations for tactical analysis
 - **📊 Tactical Overlay**: Real-time tactical view with pitch coordinate system
 - **🎬 Video Processing**: Comprehensive video analysis with interpolation and annotation
+
+---
 
 ## 🎬 DEMO
 
@@ -37,6 +54,8 @@ TACTICAL Demo : [DRIVE](https://drive.google.com/file/d/1YDTXCZ0lUd37Q--3OuOjwEs
 
 COMPLETE Demo : [DRIVE](https://drive.google.com/file/d/1UJPbALHvFJ3CUbeYTa045YokCSOBiXBF/view?usp=sharing)
 </p>
+
+---
 
 ## 🏗️ Project Structure
 
@@ -185,6 +204,8 @@ Soccer_Analysis/
         └── Trained/           # Fine-tuned models
 ```
 
+---
+
 ## 🚀 How to Get Started
 
 ### 1. Clone Repository and Install Dependencies
@@ -285,6 +306,8 @@ python pipelines/tactical_pipeline.py
 # Complete tracking with team assignment
 python pipelines/tracking_pipeline.py
 ```
+
+---
 
 ## 🔄 In-Depth Pipelines
 
@@ -394,6 +417,8 @@ Frame → YOLO Pose Model → 29 Keypoints → [
               └──────────────────────────────────────┘
 ```
 
+---
+
 ## 📋 In-Depth main.py
 
 The `main.py` serves as the primary entry point featuring the `CompleteSoccerAnalysisPipeline` class:
@@ -432,6 +457,8 @@ class CompleteSoccerAnalysisPipeline:
 - **Accuracy**: >95% player detection, >90% tracking consistency
 - **Team Assignment**: >88% accuracy on standard soccer videos
 
+---
+
 ## 🔗 Quick Links to Models and Datasets
 
 ### Pre-trained Models
@@ -465,7 +492,5 @@ class CompleteSoccerAnalysisPipeline:
 Visit the linked repositories for detailed model documentation, training procedures, dataset specifications, and performance benchmarks.
 
 ---
-
-🏆 **Ready to analyze soccer videos with state-of-the-art computer vision!** 
 
 For support or questions, please refer to the model and dataset documentation in the linked HuggingFace repositories.
