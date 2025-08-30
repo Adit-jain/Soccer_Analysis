@@ -1,1 +1,1 @@
-All the downloaded models will appear here
+By Default, this is the directory for all the original YOLO models. The downloads and original models will be stored here

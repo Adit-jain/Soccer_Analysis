@@ -14,6 +14,32 @@ Data_utils/
 └── README.md               # This file
 ```
 
+### Complete File Structure
+
+```
+Data_utils/
+├── External_Detections/
+│   ├── coco_to_yolo.py              # COCO to YOLO format conversion
+│   ├── create_data_yaml.py          # YOLO dataset configuration generator
+│   ├── merge_datasets.py            # Multi-dataset merger with class mapping
+│   ├── slice_images.py              # SAHI-based image slicing
+│   └── visualize_coco_dataset.py    # COCO dataset visualization tool
+├── SoccerNet_Detections/
+│   ├── constants.py                 # Dataset paths and configuration
+│   ├── data_preprocessing.py        # MOT to YOLO format conversion
+│   └── get_soccernet_data.py        # SoccerNet tracking data downloader
+├── SoccerNet_Keypoints/
+│   ├── constants.py                 # Dataset paths and field constants
+│   ├── create_dataset_yaml.py       # YOLO pose dataset configuration
+│   ├── downloader.py                # SoccerNet calibration data downloader
+│   ├── get_pitch_object.py          # Green pitch area detection
+│   ├── line_intersections.py        # Field keypoint calculation from lines
+│   ├── process_images.py            # Unified processing pipeline
+│   ├── transfer_json_files.py       # JSON file consolidation utility
+│   └── temp.ipynb                   # Development/testing notebook
+└── README.md                        # This documentation file
+```
+
 ## 🔧 External_Detections
 
 Scripts for processing external COCO format datasets and converting them to YOLO format.
@@ -141,7 +167,7 @@ Downloads SoccerNet calibration datasets including field line annotations.
 - Authentication management
 
 #### `line_intersections.py`
-Calculates 27 field keypoints from SoccerNet line endpoints using geometric intersections.
+Calculates field keypoints from SoccerNet line endpoints using geometric intersections.
 
 **Key Features:**
 - **LineIntersectionCalculator** class with comprehensive geometry methods
@@ -150,10 +176,11 @@ Calculates 27 field keypoints from SoccerNet line endpoints using geometric inte
 - Point-to-line distance calculations
 - Field keypoint mapping and visualization
 
-**Keypoint Categories:**
-- **Left side keypoints (1-10):** Corner points, penalty area, goal area
-- **Center keypoints (11-16):** Center line, center circle, field center
-- **Right side keypoints (17-27):** Mirror of left side points
+**Keypoint Processing:**
+- Converts SoccerNet line endpoints to field keypoints
+- Handles various field line types (sidelines, penalty areas, goal areas, center circle)
+- Supports visualization of calculated keypoints
+- Normalizes coordinates for consistent processing
 
 **Usage:**
 ```python
@@ -213,10 +240,30 @@ Utility to consolidate SoccerNet calibration JSON files from different splits.
 Creates Ultralytics YOLO dataset configuration for keypoint detection.
 
 **Features:**
-- 27 keypoints with (x, y, visibility) format
+- Keypoints with (x, y, visibility) format
 - Keypoint connections for visualization
 - Named keypoint mapping
 - Pose estimation configuration
+- Dataset path configuration for training
+
+#### `transfer_json_files.py`
+Utility to consolidate SoccerNet calibration JSON files from different splits.
+
+**Features:**
+- Consolidates train/test/valid JSON files
+- Copy or move operations
+- Batch processing support
+- Verification and statistics
+- Unified directory structure creation
+
+#### `temp.ipynb`
+Development and testing Jupyter notebook for SoccerNet keypoints processing.
+
+**Contents:**
+- Interactive data exploration and visualization
+- Line endpoint analysis and keypoint calculation testing
+- Field keypoint visualization examples
+- Development utilities for debugging processing pipeline
 
 ## 🚀 Usage Examples
 
@@ -282,8 +329,21 @@ soccernet_password = "your_password"
 ```
 
 ### SoccerNet_Keypoints/constants.py
+Contains dataset paths, field dimensions, and keypoint mapping constants:
 ```python
+dataset_dir = "path/to/soccernet/data"
 calibration_dir = Path("path/to/calibration/data")
+soccernet_password = "your_password"
+
+# Field dimensions (FIFA standard)
+FIELD_LENGTH = 105.0  # meters
+FIELD_WIDTH = 68.0    # meters
+GOAL_WIDTH = 7.32
+CENTER_CIRCLE_RADIUS = 9.15
+
+# Standard field keypoints in real-world coordinates
+STANDARD_FIELD_KEYPOINTS = {...}  # Complete field keypoint mapping
+KEYPOINT_MAPPING = {...}  # Detected to standard keypoint mapping
 ```
 
 ## 🔍 Data Formats
