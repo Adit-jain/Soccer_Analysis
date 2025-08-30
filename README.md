@@ -13,7 +13,30 @@ A comprehensive computer vision system for analyzing soccer videos using state-o
 
 ## 🎬 DEMO
 
-*Videos will be inserted here*
+<p>
+<img src="thumbnails/Keypoint_thumbnail.jpg" width="600"/>
+
+KEYPOINT Demo : [DRIVE](https://drive.google.com/file/d/1zrQ76-K3Dr0YYS_i3RUxoOGPowcCUiBE/view?usp=sharing)
+</p>
+
+<p>
+<img src="thumbnails/thumbnail.jpg" width="600"/>
+
+
+TRACKING Demo : [DRIVE](https://drive.google.com/file/d/11pUe9Y1B5yUPQVwRx-abWaGD9L0df38X/view?usp=sharing)
+</p>
+
+<p>
+<img src="thumbnails/tactical_thubnail2.jpg" width="600"/>
+
+TACTICAL Demo : [DRIVE](https://drive.google.com/file/d/1YDTXCZ0lUd37Q--3OuOjwEsGnBbv8rz-/view?usp=sharing)
+</p>
+
+<p>
+<img src="thumbnails/tactical_thubnail.jpg" width="600"/>
+
+COMPLETE Demo : [DRIVE](https://drive.google.com/file/d/1UJPbALHvFJ3CUbeYTa045YokCSOBiXBF/view?usp=sharing)
+</p>
 
 ## 🏗️ Project Structure
 
